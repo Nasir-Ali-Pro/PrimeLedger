@@ -147,7 +147,11 @@ class _PaymentFormScreenState extends ConsumerState<PaymentFormScreen> {
                     if (_formKey.currentState!.validate()) {
                       final amount = double.tryParse(_amountCtrl.text) ?? 0;
                       final invoices = ref.read(invoicesProvider);
-                      final inv = invoices.firstWhere((i) => i.id == widget.invoiceId);
+                      final inv = invoices.where((i) => i.id == widget.invoiceId).firstOrNull;
+                      if (inv == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice not found')));
+                        return;
+                      }
 
                       final payment = Payment(
                         id: const Uuid().v4(),

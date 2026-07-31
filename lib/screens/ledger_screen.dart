@@ -10,6 +10,7 @@ import '../providers/expense_provider.dart';
 import '../providers/payment_provider.dart';
 import '../providers/client_provider.dart';
 import '../providers/supplier_provider.dart';
+import '../providers/supplier_payment_provider.dart';
 import '../providers/purchase_order_provider.dart';
 import '../providers/product_provider.dart';
 import '../models/invoice.dart';
@@ -197,16 +198,17 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         _CardData('Outstanding Dues', dues, Icons.pending_actions, const [Color(0xFFF59E0B), Color(0xFFD97706)]),
       ]);
     } else if (filter.supplierId != null) {
-      final supplierPos = pos.where((po) => po.supplierId == filter.supplierId).toList();
-      final totalOrdered = supplierPos.fold(0.0, (s, po) => s + po.totalAmount);
-      final totalReceived = supplierPos.where((po) => po.status == 'Received').fold(0.0, (s, po) => s + po.totalAmount);
-      final totalPending = supplierPos.where((po) => po.status == 'Pending').fold(0.0, (s, po) => s + po.totalAmount);
+      final supplierPos = pos.where((po) => po.supplierId == filter.supplierId && po.status != 'Draft' && po.status != 'Cancelled').toList();
+      final totalPurchased = supplierPos.fold(0.0, (s, po) => s + po.totalAmount);
+      final supplierPaymentsList = ref.watch(supplierPaymentsProvider).where((sp) => sp.supplierId == filter.supplierId).toList();
+      final totalPaid = supplierPaymentsList.fold(0.0, (s, sp) => s + sp.amount);
+      final outstandingOwed = totalPurchased - totalPaid;
       final totalCount = supplierPos.length.toDouble();
 
       return _buildSummaryCardsRow(theme, settings, [
-        _CardData('Total Ordered', totalOrdered, Icons.shopping_cart, const [Color(0xFF6366F1), Color(0xFF8B5CF6)]),
-        _CardData('Received Value', totalReceived, Icons.inventory_2, const [Color(0xFF10B981), Color(0xFF059669)]),
-        _CardData('Pending Value', totalPending, Icons.pending_actions, const [Color(0xFFF59E0B), Color(0xFFD97706)]),
+        _CardData('Total Purchased', totalPurchased, Icons.shopping_cart, const [Color(0xFF6366F1), Color(0xFF8B5CF6)]),
+        _CardData('Total Paid', totalPaid, Icons.payments, const [Color(0xFF10B981), Color(0xFF059669)]),
+        _CardData('Outstanding Owed', outstandingOwed, Icons.pending_actions, const [Color(0xFFF59E0B), Color(0xFFD97706)]),
         _CardData('Total POs', totalCount, Icons.numbers, const [Color(0xFF14B8A6), Color(0xFF0D9488)], isCount: true),
       ]);
     } else {
@@ -222,7 +224,13 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         final linkedInv = invoices.where((i) => i.id == e.invoiceId).firstOrNull;
         return linkedInv == null || linkedInv.status == 'Draft' || linkedInv.status == 'Cancelled';
       }).fold(0.0, (s, e) => s + e.amount * (1 + e.markupPercent / 100));
-      final outstanding = totalRevenueGross + totalUnbilledExpenses - totalCollected;
+      final clientOutstanding = totalRevenueGross + totalUnbilledExpenses - totalCollected;
+
+      final validPos = pos.where((po) => po.status != 'Draft' && po.status != 'Cancelled').toList();
+      final totalPurchases = validPos.fold(0.0, (s, po) => s + po.totalAmount);
+      final totalSupplierPaid = ref.watch(supplierPaymentsProvider).fold(0.0, (s, sp) => s + sp.amount);
+      final supplierOutstanding = totalPurchases - totalSupplierPaid;
+      final netOutstanding = clientOutstanding + supplierOutstanding;
 
       double totalCogs = 0;
       for (final inv in validInvoices) {
@@ -245,7 +253,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         _CardData('Revenue', totalRevenue, Icons.trending_up, const [Color(0xFF6366F1), Color(0xFF8B5CF6)]),
         _CardData('Expenses', totalExpenses, Icons.trending_down, const [Color(0xFFEF4444), Color(0xFFDC2626)]),
         _CardData('Net Balance', netBalance, Icons.account_balance, netBalance >= 0 ? const [Color(0xFF10B981), Color(0xFF059669)] : const [Color(0xFFEF4444), Color(0xFFDC2626)]),
-        _CardData('Outstanding', outstanding, Icons.pending_actions, const [Color(0xFFF59E0B), Color(0xFFD97706)]),
+        _CardData('Outstanding', netOutstanding, Icons.pending_actions, const [Color(0xFFF59E0B), Color(0xFFD97706)]),
       ]);
     }
   }
@@ -519,7 +527,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     } else if (filter.supplierId != null) {
       return entry.type == LedgerEntryType.purchaseOrder;
     } else {
-      return entry.type == LedgerEntryType.invoice;
+      return entry.type == LedgerEntryType.invoice || entry.type == LedgerEntryType.purchaseOrder;
     }
   }
 

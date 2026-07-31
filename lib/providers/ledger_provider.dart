@@ -213,13 +213,13 @@ final ledgerProvider = Provider<List<LedgerEntry>>((ref) {
   }
 
   for (final po in pos) {
-    if (po.status != 'Received' && po.status != 'Pending') continue;
+    if (po.status == 'Draft' || po.status == 'Cancelled') continue;
     entries.add(LedgerEntry(
       id: 'po_${po.id}',
       date: po.issueDate,
       type: LedgerEntryType.purchaseOrder,
       referenceNumber: po.poNumber,
-      description: 'Purchase order ${po.status == 'Received' ? 'received' : 'pending'}',
+      description: 'Purchase order ${po.status == 'Received' ? 'received' : 'issued'}',
       counterpartyName: supplierMap[po.supplierId] ?? 'Supplier #${po.supplierId.substring(0, 6)}',
       counterpartyId: po.supplierId,
       debit: 0,
@@ -293,16 +293,22 @@ final ledgerProvider = Provider<List<LedgerEntry>>((ref) {
         running += entry.debit;
       }
     } else if (filter.supplierId != null) {
-      // Supplier ledger: PO received increases what we owe them (credit)
+      // Supplier ledger: PO increases what we owe them (credit), Supplier Payment decreases it (debit)
       if (entry.type == LedgerEntryType.purchaseOrder) {
         running += entry.credit;
       } else if (entry.type == LedgerEntryType.supplierPayment) {
         running -= entry.debit;
       }
     } else {
-      // General Ledger (progressive running balance, Debit - Credit)
-      if (entry.type != LedgerEntryType.estimate && entry.type != LedgerEntryType.purchaseOrder) {
-        running += entry.debit - entry.credit;
+      // General Ledger (progressive running balance)
+      if (entry.type != LedgerEntryType.estimate) {
+        if (entry.type == LedgerEntryType.purchaseOrder) {
+          running += entry.credit;
+        } else if (entry.type == LedgerEntryType.supplierPayment) {
+          running -= entry.debit;
+        } else {
+          running += entry.debit - entry.credit;
+        }
       }
     }
 

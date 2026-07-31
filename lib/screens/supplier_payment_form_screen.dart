@@ -144,7 +144,11 @@ class _SupplierPaymentFormScreenState extends ConsumerState<SupplierPaymentFormS
                     if (_formKey.currentState!.validate()) {
                       final amount = double.tryParse(_amountCtrl.text) ?? 0;
                       final pos = ref.read(purchaseOrdersProvider);
-                      final po = pos.firstWhere((p) => p.id == widget.purchaseOrderId);
+                      final po = pos.where((p) => p.id == widget.purchaseOrderId).firstOrNull;
+                      if (po == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Purchase Order not found')));
+                        return;
+                      }
 
                       final payment = SupplierPayment(
                         id: const Uuid().v4(),

@@ -40,8 +40,10 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
         
         // Link expenses
         for (final expId in linkedExpenseIds) {
-          final exp = ref.read(expensesProvider).firstWhere((e) => e.id == expId);
-          await ref.read(expenseDaoProvider).update(exp.copyWith(invoiceId: invoice.id));
+          final exp = ref.read(expensesProvider).where((e) => e.id == expId).firstOrNull;
+          if (exp != null) {
+            await ref.read(expenseDaoProvider).update(exp.copyWith(invoiceId: invoice.id));
+          }
         }
         
         // Handle payments
@@ -92,8 +94,10 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
       }
       // Link the new ones
       for (final expId in linkedExpenseIds) {
-        final exp = allExpenses.firstWhere((e) => e.id == expId);
-        await ref.read(expenseDaoProvider).update(exp.copyWith(invoiceId: invoice.id));
+        final exp = allExpenses.where((e) => e.id == expId).firstOrNull;
+        if (exp != null) {
+          await ref.read(expenseDaoProvider).update(exp.copyWith(invoiceId: invoice.id));
+        }
       }
 
       // Check current payments for this invoice
