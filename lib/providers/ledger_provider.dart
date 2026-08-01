@@ -119,22 +119,48 @@ final ledgerProvider = Provider<List<LedgerEntry>>((ref) {
   final filter = ref.watch(ledgerFilterProvider);
   final supplierPayments = ref.watch(supplierPaymentsProvider);
 
+  return buildLedgerEntries(
+    invoices: invoices,
+    payments: payments,
+    expenses: expenses,
+    pos: pos,
+    supplierPayments: supplierPayments,
+    estimates: estimates,
+    clients: clients,
+    suppliers: suppliers,
+    filter: filter,
+  );
+});
+
+List<LedgerEntry> buildLedgerEntries({
+  required List<dynamic> invoices,
+  required List<dynamic> payments,
+  required List<dynamic> expenses,
+  required List<dynamic> pos,
+  required List<dynamic> supplierPayments,
+  required List<dynamic> estimates,
+  required List<dynamic> clients,
+  required List<dynamic> suppliers,
+  required LedgerFilterState filter,
+}) {
   final clientMap = {for (final c in clients) c.id: c.name};
   final supplierMap = {for (final s in suppliers) s.id: s.name};
   final invoiceMap = {for (final i in invoices) i.id: i};
   final poMap = {for (final po in pos) po.id: po};
 
-  final paymentsByInvoice = <String, List<Payment>>{};
+  final paymentsByInvoice = <String, List<dynamic>>{};
   for (final p in payments) {
     paymentsByInvoice.putIfAbsent(p.invoiceId, () => []).add(p);
   }
 
-  final supplierPaymentsByPo = <String, List<SupplierPayment>>{};
+  final supplierPaymentsByPo = <String, List<dynamic>>{};
   for (final sp in supplierPayments) {
     supplierPaymentsByPo.putIfAbsent(sp.purchaseOrderId, () => []).add(sp);
   }
 
   var entries = <LedgerEntry>[];
+
+  String safeId(String id) => id.length >= 6 ? id.substring(0, 6) : id;
 
   for (final inv in invoices) {
     if (inv.status == 'Draft' || inv.status == 'Cancelled') continue;
@@ -144,7 +170,7 @@ final ledgerProvider = Provider<List<LedgerEntry>>((ref) {
       type: LedgerEntryType.invoice,
       referenceNumber: inv.invoiceNumber,
       description: 'Invoice issued',
-      counterpartyName: clientMap[inv.clientId] ?? 'Client #${inv.clientId.substring(0, 6)}',
+      counterpartyName: clientMap[inv.clientId] ?? 'Client #${safeId(inv.clientId)}',
       counterpartyId: inv.clientId,
       debit: inv.totalAmount,
       credit: 0,
@@ -167,9 +193,9 @@ final ledgerProvider = Provider<List<LedgerEntry>>((ref) {
       id: 'pmt_${pmt.id}',
       date: pmt.date,
       type: LedgerEntryType.payment,
-      referenceNumber: pmt.referenceNumber ?? 'PAY-${pmt.id.substring(0, 6)}',
+      referenceNumber: pmt.referenceNumber ?? 'PAY-${safeId(pmt.id)}',
       description: 'Payment received via ${pmt.paymentMethod}',
-      counterpartyName: clientMap[pmt.clientId] ?? 'Client #${pmt.clientId.substring(0, 6)}',
+      counterpartyName: clientMap[pmt.clientId] ?? 'Client #${safeId(pmt.clientId)}',
       counterpartyId: pmt.clientId,
       debit: 0,
       credit: pmt.amount,
@@ -199,7 +225,7 @@ final ledgerProvider = Provider<List<LedgerEntry>>((ref) {
       id: 'exp_${exp.id}',
       date: exp.date,
       type: LedgerEntryType.expense,
-      referenceNumber: 'EXP-${exp.id.substring(0, 6)}',
+      referenceNumber: 'EXP-${safeId(exp.id)}',
       description: exp.isBillable && exp.markupPercent > 0
           ? '${exp.description} (${exp.category}) + ${exp.markupPercent.toStringAsFixed(0)}% markup'
           : '${exp.description} (${exp.category})',
@@ -220,7 +246,7 @@ final ledgerProvider = Provider<List<LedgerEntry>>((ref) {
       type: LedgerEntryType.purchaseOrder,
       referenceNumber: po.poNumber,
       description: 'Purchase order ${po.status == 'Received' ? 'received' : 'issued'}',
-      counterpartyName: supplierMap[po.supplierId] ?? 'Supplier #${po.supplierId.substring(0, 6)}',
+      counterpartyName: supplierMap[po.supplierId] ?? 'Supplier #${safeId(po.supplierId)}',
       counterpartyId: po.supplierId,
       debit: 0,
       credit: po.totalAmount,
@@ -243,9 +269,9 @@ final ledgerProvider = Provider<List<LedgerEntry>>((ref) {
       id: 'sp_${sp.id}',
       date: sp.date,
       type: LedgerEntryType.supplierPayment,
-      referenceNumber: sp.referenceNumber ?? 'SP-${sp.id.substring(0, 6)}',
+      referenceNumber: sp.referenceNumber ?? 'SP-${safeId(sp.id)}',
       description: 'Payment to supplier via ${sp.paymentMethod}',
-      counterpartyName: supplierMap[sp.supplierId] ?? 'Supplier #${sp.supplierId.substring(0, 6)}',
+      counterpartyName: supplierMap[sp.supplierId] ?? 'Supplier #${safeId(sp.supplierId)}',
       counterpartyId: sp.supplierId,
       debit: sp.amount,
       credit: 0,
@@ -262,7 +288,7 @@ final ledgerProvider = Provider<List<LedgerEntry>>((ref) {
       type: LedgerEntryType.estimate,
       referenceNumber: est.estimateNumber,
       description: 'Estimate ${est.status == 'Converted' ? 'converted to invoice' : 'sent to client'}',
-      counterpartyName: clientMap[est.clientId] ?? 'Client #${est.clientId.substring(0, 6)}',
+      counterpartyName: clientMap[est.clientId] ?? 'Client #${safeId(est.clientId)}',
       counterpartyId: est.clientId,
       debit: est.totalAmount,
       credit: 0,
@@ -366,4 +392,4 @@ final ledgerProvider = Provider<List<LedgerEntry>>((ref) {
   }
 
   return filtered;
-});
+}
