@@ -234,6 +234,22 @@ class _EstimatesScreenState extends ConsumerState<EstimatesScreen> {
                                   icon: Icons.transform,
                                   label: 'Convert',
                                 ),
+                              if (est.status == 'Converted')
+                                SlidableAction(
+                                  onPressed: (ctx) async {
+                                    final updated = est.copyWith(status: 'Sent');
+                                    await ref.read(estimatesProvider.notifier).updateEstimate(updated);
+                                    if (ctx.mounted) {
+                                      ScaffoldMessenger.of(ctx).showSnackBar(
+                                        const SnackBar(content: Text('Estimate status reverted to Sent!'), backgroundColor: Color(0xFF3B82F6)),
+                                      );
+                                    }
+                                  },
+                                  backgroundColor: const Color(0xFF3B82F6),
+                                  foregroundColor: Colors.white,
+                                  icon: Icons.undo,
+                                  label: 'Revert',
+                                ),
                               SlidableAction(
                                 onPressed: (_) => _confirmDelete(est),
                                 backgroundColor: const Color(0xFFEF4444),

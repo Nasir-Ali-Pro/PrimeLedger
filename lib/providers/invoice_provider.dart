@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import '../models/invoice.dart';
+import '../models/estimate.dart';
 import '../database/database_provider.dart';
 import 'product_provider.dart';
 import 'payment_provider.dart';
 import 'expense_provider.dart';
+import 'estimate_provider.dart';
 import '../models/payment.dart';
 import 'package:uuid/uuid.dart';
 
@@ -193,6 +195,26 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
 
   Future<void> deleteInvoice(String id) async {
     try {
+      final invoice = await ref.read(invoiceDaoProvider).getById(id);
+      if (invoice != null) {
+        final estimates = ref.read(estimatesProvider);
+        Estimate? linkedEst;
+        if (invoice.notes != null && invoice.notes!.contains('Converted from Estimate')) {
+          for (final est in estimates) {
+            if (est.status == 'Converted' && invoice.notes!.contains(est.estimateNumber)) {
+              linkedEst = est;
+              break;
+            }
+          }
+        }
+        linkedEst ??= estimates.where((e) => e.status == 'Converted' && e.clientId == invoice.clientId && (e.totalAmount - invoice.totalAmount).abs() < 0.01).firstOrNull;
+
+        if (linkedEst != null) {
+          final reverted = linkedEst.copyWith(status: 'Sent');
+          await ref.read(estimatesProvider.notifier).updateEstimate(reverted);
+        }
+      }
+
       await ref.read(invoiceDaoProvider).delete(id);
       await _load();
       await ref.read(expensesProvider.notifier).refresh();
