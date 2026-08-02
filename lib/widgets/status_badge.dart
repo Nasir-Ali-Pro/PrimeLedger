@@ -10,7 +10,7 @@ class StatusBadge extends StatelessWidget {
     switch (status) {
       case 'Paid': case 'Completed': case 'Received': case 'Converted':
         return const Color(0xFF10B981);
-      case 'Partially Paid': case 'Pending': case 'Sent': case 'Partial':
+      case 'Partially Paid': case 'Pending': case 'Sent': case 'Unpaid': case 'Partial':
         return const Color(0xFFF59E0B);
       case 'Overdue': case 'Cancelled':
         return const Color(0xFFEF4444);
