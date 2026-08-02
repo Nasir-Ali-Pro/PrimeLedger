@@ -102,7 +102,8 @@ class InvoiceDao {
             discountPercent: Value(item.discountPercent),
             total: Value(item.total),
           ));
-          if (item.productId != null && invoice.status != 'Draft') {
+          final isDeducting = _isDeductingStatus(invoice.status);
+          if (item.productId != null && isDeducting) {
             await _adjustProductStock(item.productId!, -item.quantity,
               type: 'Sale',
               referenceNumber: invoice.invoiceNumber,
@@ -116,6 +117,8 @@ class InvoiceDao {
     }
   }
 
+  bool _isDeductingStatus(String status) => status != 'Draft' && status != 'Cancelled';
+
   Future<void> update(Invoice invoice) async {
     try {
       await _db.transaction(() async {
@@ -123,23 +126,21 @@ class InvoiceDao {
         final oldItems = await _getItems(invoice.id);
         final newStatus = invoice.status;
 
-        final wasNotDraft = oldInvoice != null && oldInvoice.status != 'Draft';
-        final isNowNotDraft = newStatus != 'Draft';
+        final wasDeducting = oldInvoice != null && _isDeductingStatus(oldInvoice.status);
+        final isNowDeducting = _isDeductingStatus(newStatus);
         final itemsChanged = _haveItemsChanged(oldItems, invoice.items);
 
-        final shouldRestock = wasNotDraft && (!isNowNotDraft || itemsChanged);
+        final shouldRestock = wasDeducting && (!isNowDeducting || itemsChanged);
         if (shouldRestock) {
           for (final old in oldItems) {
             if (old.productId != null) {
               await _adjustProductStock(old.productId!, old.quantity,
                 type: 'Restock',
                 referenceNumber: invoice.invoiceNumber,
-                description: 'Reversal from invoice update');
+                description: !isNowDeducting ? 'Invoice status updated to $newStatus' : 'Reversal from invoice update');
             }
           }
         }
-
-        // Status recalculation moved up before restocking check
 
         final updatedInvoice = invoice.copyWith(status: newStatus);
 
@@ -158,7 +159,7 @@ class InvoiceDao {
             discountPercent: Value(item.discountPercent),
             total: Value(item.total),
           ));
-          final shouldDeduct = isNowNotDraft && (!wasNotDraft || itemsChanged);
+          final shouldDeduct = isNowDeducting && (!wasDeducting || itemsChanged);
           if (item.productId != null && shouldDeduct) {
             await _adjustProductStock(item.productId!, -item.quantity,
               type: 'Sale',
@@ -178,12 +179,14 @@ class InvoiceDao {
       await _db.transaction(() async {
         final items = await _getItems(id);
         final invoice = await (_db.select(_db.invoicesTbl)..where((t) => t.id.equals(id))).getSingleOrNull();
-        for (final item in items) {
-          if (item.productId != null) {
-            await _adjustProductStock(item.productId!, item.quantity,
-              type: 'Restock',
-              referenceNumber: invoice?.invoiceNumber ?? id,
-              description: 'Invoice deleted');
+        if (invoice != null && _isDeductingStatus(invoice.status)) {
+          for (final item in items) {
+            if (item.productId != null) {
+              await _adjustProductStock(item.productId!, item.quantity,
+                type: 'Restock',
+                referenceNumber: invoice.invoiceNumber,
+                description: 'Invoice deleted');
+            }
           }
         }
         // Manually delete child records first to prevent foreign key constraint violations

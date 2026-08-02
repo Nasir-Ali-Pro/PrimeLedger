@@ -178,6 +178,7 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
         taxTotal: _existing!.taxTotal,
         totalAmount: _existing!.totalAmount,
         status: 'Unpaid',
+        notes: 'Converted from Estimate ${_existing!.estimateNumber}',
         items: _existing!.items.map((i) => InvoiceItem(
           id: const Uuid().v4(),
           productId: i.productId,

@@ -201,6 +201,7 @@ class _EstimatesScreenState extends ConsumerState<EstimatesScreen> {
                                         taxTotal: est.taxTotal,
                                         totalAmount: est.totalAmount,
                                         status: 'Unpaid',
+                                        notes: 'Converted from Estimate ${est.estimateNumber}',
                                         items: est.items.map((i) => InvoiceItem(
                                           id: const Uuid().v4(),
                                           productId: i.productId,
