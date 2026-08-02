@@ -167,32 +167,51 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
     // ignore: use_build_context_synchronously
     LoadingOverlay.show(context, message: 'Converting & Updating Inventory...');
     try {
-      final invoiceNumber = 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-      final invoice = Invoice(
-        id: const Uuid().v4(),
-        clientId: _existing!.clientId,
-        invoiceNumber: invoiceNumber,
-        issueDate: DateTime.now(),
-        dueDate: DateTime.now().add(const Duration(days: 14)),
-        subTotal: _existing!.subTotal,
-        taxTotal: _existing!.taxTotal,
-        totalAmount: _existing!.totalAmount,
-        status: 'Unpaid',
-        notes: 'Converted from Estimate ${_existing!.estimateNumber}',
-        items: _existing!.items.map((i) => InvoiceItem(
-          id: const Uuid().v4(),
-          productId: i.productId,
-          description: i.description,
-          quantity: i.quantity,
-          rate: i.rate,
-          taxPercent: i.taxPercent,
-          taxAmount: i.taxAmount,
-          discountPercent: i.discountPercent,
-          total: i.total,
-        )).toList(),
-      );
+      final allInvoices = ref.read(invoicesProvider);
+      final existingInv = allInvoices.where((i) => i.notes != null && i.notes!.contains(_existing!.estimateNumber)).firstOrNull;
 
-      await ref.read(invoicesProvider.notifier).addInvoice(invoice);
+      final newInvoiceItems = _existing!.items.map((i) => InvoiceItem(
+        id: const Uuid().v4(),
+        productId: i.productId,
+        description: i.description,
+        quantity: i.quantity,
+        rate: i.rate,
+        taxPercent: i.taxPercent,
+        taxAmount: i.taxAmount,
+        discountPercent: i.discountPercent,
+        total: i.total,
+      )).toList();
+
+      String targetInvNum = '';
+      if (existingInv != null) {
+        targetInvNum = existingInv.invoiceNumber;
+        final updatedInvoice = existingInv.copyWith(
+          items: newInvoiceItems,
+          subTotal: _existing!.subTotal,
+          taxTotal: _existing!.taxTotal,
+          totalAmount: _existing!.totalAmount,
+          discountPercent: _existing!.discountPercent,
+          discountAmount: _existing!.discountAmount,
+          notes: 'Converted from Estimate ${_existing!.estimateNumber}',
+        );
+        await ref.read(invoicesProvider.notifier).updateInvoice(updatedInvoice);
+      } else {
+        targetInvNum = 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+        final invoice = Invoice(
+          id: const Uuid().v4(),
+          clientId: _existing!.clientId,
+          invoiceNumber: targetInvNum,
+          issueDate: DateTime.now(),
+          dueDate: DateTime.now().add(const Duration(days: 14)),
+          subTotal: _existing!.subTotal,
+          taxTotal: _existing!.taxTotal,
+          totalAmount: _existing!.totalAmount,
+          status: 'Unpaid',
+          notes: 'Converted from Estimate ${_existing!.estimateNumber}',
+          items: newInvoiceItems,
+        );
+        await ref.read(invoicesProvider.notifier).addInvoice(invoice);
+      }
       
       final updated = _existing!.copyWith(status: 'Converted');
       await ref.read(estimatesProvider.notifier).updateEstimate(updated);
@@ -201,7 +220,7 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
       LoadingOverlay.hide();
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text('Converted to Invoice $invoiceNumber! Inventory stock updated.'),
+          content: Text('Converted to Invoice $targetInvNum! Inventory stock updated.'),
           backgroundColor: const Color(0xFF10B981),
         ),
       );

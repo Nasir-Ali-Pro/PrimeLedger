@@ -186,42 +186,62 @@ class _EstimatesScreenState extends ConsumerState<EstimatesScreen> {
                                     );
 
                                     if (confirmed != true) return;
-
                                     // ignore: use_build_context_synchronously
                                     LoadingOverlay.show(context, message: 'Converting & Updating Inventory...');
                                     try {
-                                      final invoiceNumber = 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-                                      final invoice = Invoice(
+                                      final allInvoices = ref.read(invoicesProvider);
+                                      final existingInv = allInvoices.where((i) => i.notes != null && i.notes!.contains(est.estimateNumber)).firstOrNull;
+
+                                      final newInvoiceItems = est.items.map((i) => InvoiceItem(
                                         id: const Uuid().v4(),
-                                        clientId: est.clientId,
-                                        invoiceNumber: invoiceNumber,
-                                        issueDate: DateTime.now(),
-                                        dueDate: DateTime.now().add(const Duration(days: 14)),
-                                        subTotal: est.subTotal,
-                                        taxTotal: est.taxTotal,
-                                        totalAmount: est.totalAmount,
-                                        status: 'Unpaid',
-                                        notes: 'Converted from Estimate ${est.estimateNumber}',
-                                        items: est.items.map((i) => InvoiceItem(
+                                        productId: i.productId,
+                                        description: i.description,
+                                        quantity: i.quantity,
+                                        rate: i.rate,
+                                        taxPercent: i.taxPercent,
+                                        taxAmount: i.taxAmount,
+                                        discountPercent: i.discountPercent,
+                                        total: i.total,
+                                      )).toList();
+
+                                      String targetInvNum = '';
+                                      if (existingInv != null) {
+                                        targetInvNum = existingInv.invoiceNumber;
+                                        final updatedInvoice = existingInv.copyWith(
+                                          items: newInvoiceItems,
+                                          subTotal: est.subTotal,
+                                          taxTotal: est.taxTotal,
+                                          totalAmount: est.totalAmount,
+                                          discountPercent: est.discountPercent,
+                                          discountAmount: est.discountAmount,
+                                          notes: 'Converted from Estimate ${est.estimateNumber}',
+                                        );
+                                        await ref.read(invoicesProvider.notifier).updateInvoice(updatedInvoice);
+                                      } else {
+                                        targetInvNum = 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+                                        final invoice = Invoice(
                                           id: const Uuid().v4(),
-                                          productId: i.productId,
-                                          description: i.description,
-                                          quantity: i.quantity,
-                                          rate: i.rate,
-                                          taxPercent: i.taxPercent,
-                                          taxAmount: i.taxAmount,
-                                          discountPercent: i.discountPercent,
-                                          total: i.total,
-                                        )).toList(),
-                                      );
-                                      await ref.read(invoicesProvider.notifier).addInvoice(invoice);
+                                          clientId: est.clientId,
+                                          invoiceNumber: targetInvNum,
+                                          issueDate: DateTime.now(),
+                                          dueDate: DateTime.now().add(const Duration(days: 14)),
+                                          subTotal: est.subTotal,
+                                          taxTotal: est.taxTotal,
+                                          totalAmount: est.totalAmount,
+                                          status: 'Unpaid',
+                                          notes: 'Converted from Estimate ${est.estimateNumber}',
+                                          items: newInvoiceItems,
+                                        );
+                                        await ref.read(invoicesProvider.notifier).addInvoice(invoice);
+                                      }
+
                                       final updated = est.copyWith(status: 'Converted');
                                       await ref.read(estimatesProvider.notifier).updateEstimate(updated);
                                       await ref.read(productsProvider.notifier).refresh();
 
                                       LoadingOverlay.hide();
                                       if (ctx.mounted) {
-                                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Converted to Invoice $invoiceNumber! Inventory stock updated.'), backgroundColor: const Color(0xFF10B981)));
+                                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Converted to Invoice $targetInvNum! Inventory stock updated.'), backgroundColor: const Color(0xFF10B981)));
                                       }
                                     } catch (e) {
                                       LoadingOverlay.hide();
