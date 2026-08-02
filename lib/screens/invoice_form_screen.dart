@@ -411,7 +411,7 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
                       }
                       return null;
                     },
-                    decoration: const InputDecoration(labelText: 'Qty', prefixIcon: Icon(Icons.numbers, size: 18)),
+                    decoration: const InputDecoration(labelText: 'Qty', prefixIcon: Icon(Icons.format_list_numbered_outlined, size: 18)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -437,7 +437,7 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
                     initialValue: (lineItems[index]['tax'] ?? 0.0).toString(),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     onChanged: (v) => setState(() => lineItems[index]['tax'] = double.tryParse(v) ?? 0.0),
-                    decoration: const InputDecoration(labelText: 'Tax %', suffixText: '%', prefixIcon: Icon(Icons.percent, size: 18)),
+                    decoration: const InputDecoration(labelText: 'Tax Rate', suffixText: '%', prefixIcon: Icon(Icons.receipt_long_outlined, size: 18)),
                   ),
                 ),
               ],
@@ -743,7 +743,7 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               onChanged: (v) => setState(() => discountPercent = double.tryParse(v) ?? 0.0),
                               decoration: const InputDecoration(
-                                labelText: 'Inv Discount %',
+                                labelText: 'Inv Discount',
                                 suffixText: '%',
                                 prefixIcon: Icon(Icons.local_offer_outlined),
                               ),

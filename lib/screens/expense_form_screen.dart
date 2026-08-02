@@ -226,7 +226,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           decoration: const InputDecoration(
                             labelText: 'Markup Percentage',
-                            prefixIcon: Icon(Icons.percent, color: AppTheme.indigo),
+                            prefixIcon: Icon(Icons.trending_up, color: AppTheme.indigo),
                             suffixText: '%',
                           ),
                           validator: (v) {

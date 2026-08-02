@@ -399,8 +399,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           controller: _markupController,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           decoration: const InputDecoration(
-                            labelText: 'Default Purchase Markup %',
-                            prefixIcon: Icon(Icons.percent),
+                            labelText: 'Default Purchase Markup',
+                            prefixIcon: Icon(Icons.trending_up),
+                            suffixText: '%',
                             helperText: 'Default markup added to cost price when creating products from received POs',
                           ),
                           validator: (v) {
@@ -415,8 +416,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           controller: _taxPercentController,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           decoration: const InputDecoration(
-                            labelText: 'Default Tax Rate %',
-                            prefixIcon: Icon(Icons.percent),
+                            labelText: 'Default Tax Rate',
+                            prefixIcon: Icon(Icons.receipt_long_outlined),
+                            suffixText: '%',
                           ),
                           validator: (v) {
                             if (v == null || v.isEmpty) return 'Required';
