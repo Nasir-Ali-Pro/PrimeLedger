@@ -5,6 +5,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:uuid/uuid.dart';
 import '../providers/estimate_provider.dart';
 import '../providers/invoice_provider.dart';
+import '../providers/product_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/client_provider.dart';
 import '../models/estimate.dart';
@@ -137,18 +138,69 @@ class _EstimatesScreenState extends ConsumerState<EstimatesScreen> {
                               if (est.status != 'Converted')
                                 SlidableAction(
                                   onPressed: (ctx) async {
-                                    LoadingOverlay.show(context, message: 'Converting...');
+                                    final products = ref.read(productsProvider);
+                                    final warnings = <String>[];
+                                    for (final item in est.items) {
+                                      if (item.productId != null) {
+                                        final prod = products.where((p) => p.id == item.productId).firstOrNull;
+                                        if (prod != null && item.quantity > prod.quantity) {
+                                          warnings.add('• ${prod.name}: ${item.quantity} requested, but only ${prod.quantity} available in stock.');
+                                        }
+                                      }
+                                    }
+
+                                    final confirmed = await showDialog<bool>(
+                                      context: context,
+                                      builder: (dialogCtx) => AlertDialog(
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                        title: Text(warnings.isNotEmpty ? 'Low Product Availability' : 'Convert to Invoice?'),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            if (warnings.isNotEmpty) ...[
+                                              const Text(
+                                                'The following item(s) exceed current inventory stock:',
+                                                style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFEF4444)),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              ...warnings.map((w) => Padding(
+                                                padding: const EdgeInsets.only(bottom: 4),
+                                                child: Text(w, style: const TextStyle(fontSize: 13, color: Color(0xFFDC2626))),
+                                              )),
+                                              const SizedBox(height: 12),
+                                              const Text('Converting will create an active invoice, deduct inventory stock, and log stock movements. Do you want to proceed?'),
+                                            ] else ...[
+                                              const Text('This will create an active invoice with these items, deduct inventory stock, log stock movements, and mark this estimate as Converted.'),
+                                            ],
+                                          ],
+                                        ),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Cancel')),
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(dialogCtx, true),
+                                            child: Text(warnings.isNotEmpty ? 'Proceed Conversion' : 'Convert', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (confirmed != true) return;
+
+                                    // ignore: use_build_context_synchronously
+                                    LoadingOverlay.show(context, message: 'Converting & Updating Inventory...');
                                     try {
+                                      final invoiceNumber = 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
                                       final invoice = Invoice(
                                         id: const Uuid().v4(),
                                         clientId: est.clientId,
-                                        invoiceNumber: 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                                        invoiceNumber: invoiceNumber,
                                         issueDate: DateTime.now(),
                                         dueDate: DateTime.now().add(const Duration(days: 14)),
                                         subTotal: est.subTotal,
                                         taxTotal: est.taxTotal,
                                         totalAmount: est.totalAmount,
-                                        status: 'Draft',
+                                        status: 'Unpaid',
                                         items: est.items.map((i) => InvoiceItem(
                                           id: const Uuid().v4(),
                                           productId: i.productId,
@@ -164,9 +216,11 @@ class _EstimatesScreenState extends ConsumerState<EstimatesScreen> {
                                       await ref.read(invoicesProvider.notifier).addInvoice(invoice);
                                       final updated = est.copyWith(status: 'Converted');
                                       await ref.read(estimatesProvider.notifier).updateEstimate(updated);
+                                      await ref.read(productsProvider.notifier).refresh();
+
                                       LoadingOverlay.hide();
                                       if (ctx.mounted) {
-                                        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Converted to Invoice!'), backgroundColor: Color(0xFF10B981)));
+                                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Converted to Invoice $invoiceNumber! Inventory stock updated.'), backgroundColor: const Color(0xFF10B981)));
                                       }
                                     } catch (e) {
                                       LoadingOverlay.hide();

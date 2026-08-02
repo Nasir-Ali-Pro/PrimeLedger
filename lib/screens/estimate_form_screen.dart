@@ -113,17 +113,50 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
     
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+
+    // Stock availability check
+    final products = ref.read(productsProvider);
+    final warnings = <String>[];
+    for (final item in _existing!.items) {
+      if (item.productId != null) {
+        final prod = products.where((p) => p.id == item.productId).firstOrNull;
+        if (prod != null && item.quantity > prod.quantity) {
+          warnings.add('• ${prod.name}: ${item.quantity} requested, but only ${prod.quantity} available in stock.');
+        }
+      }
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Convert to Invoice?'),
-        content: const Text('This will create a new Draft invoice with these items and mark this estimate as Converted.'),
+        title: Text(warnings.isNotEmpty ? 'Low Product Availability' : 'Convert to Invoice?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (warnings.isNotEmpty) ...[
+              const Text(
+                'The following item(s) exceed current inventory stock:',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFEF4444)),
+              ),
+              const SizedBox(height: 8),
+              ...warnings.map((w) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(w, style: const TextStyle(fontSize: 13, color: Color(0xFFDC2626))),
+              )),
+              const SizedBox(height: 12),
+              const Text('Converting will create an active invoice, deduct inventory stock, and log stock movements. Do you want to proceed?'),
+            ] else ...[
+              const Text('This will create an active invoice with these items, deduct inventory stock, log stock movements, and mark this estimate as Converted.'),
+            ],
+          ],
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Convert', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(warnings.isNotEmpty ? 'Proceed Conversion' : 'Convert', style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -132,18 +165,19 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
     if (confirmed != true) return;
     
     // ignore: use_build_context_synchronously
-    LoadingOverlay.show(context, message: 'Converting...');
+    LoadingOverlay.show(context, message: 'Converting & Updating Inventory...');
     try {
+      final invoiceNumber = 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
       final invoice = Invoice(
         id: const Uuid().v4(),
         clientId: _existing!.clientId,
-        invoiceNumber: 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+        invoiceNumber: invoiceNumber,
         issueDate: DateTime.now(),
         dueDate: DateTime.now().add(const Duration(days: 14)),
         subTotal: _existing!.subTotal,
         taxTotal: _existing!.taxTotal,
         totalAmount: _existing!.totalAmount,
-        status: 'Draft',
+        status: 'Unpaid',
         items: _existing!.items.map((i) => InvoiceItem(
           id: const Uuid().v4(),
           productId: i.productId,
@@ -161,12 +195,13 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
       
       final updated = _existing!.copyWith(status: 'Converted');
       await ref.read(estimatesProvider.notifier).updateEstimate(updated);
+      await ref.read(productsProvider.notifier).refresh();
 
       LoadingOverlay.hide();
       scaffoldMessenger.showSnackBar(
-        const SnackBar(
-          content: Text('Converted to Invoice successfully!'),
-          backgroundColor: Color(0xFF10B981),
+        SnackBar(
+          content: Text('Converted to Invoice $invoiceNumber! Inventory stock updated.'),
+          backgroundColor: const Color(0xFF10B981),
         ),
       );
       navigator.pop();
