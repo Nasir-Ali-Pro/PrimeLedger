@@ -102,15 +102,15 @@ void main() {
       expect(entries[1].credit, 400.0);
       expect(entries[1].balance, 600.0);
 
-      // Entry 3: Purchase Order $800 -> balance = $1400
+      // Entry 3: Purchase Order $800 -> Supplier balance = $800
       expect(entries[2].type, LedgerEntryType.purchaseOrder);
       expect(entries[2].credit, 800.0);
-      expect(entries[2].balance, 1400.0);
+      expect(entries[2].balance, 800.0);
 
-      // Entry 4: Supplier Partial Payment $300 -> balance = $1100
+      // Entry 4: Supplier Partial Payment $300 -> Supplier balance = $500
       expect(entries[3].type, LedgerEntryType.supplierPayment);
       expect(entries[3].debit, 300.0);
-      expect(entries[3].balance, 1100.0);
+      expect(entries[3].balance, 500.0);
     });
 
     test('Calculates Supplier Account Ledger balance and remaining amount owed accurately', () {

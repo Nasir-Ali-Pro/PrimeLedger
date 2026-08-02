@@ -8,8 +8,6 @@ import 'estimate_provider.dart';
 import 'client_provider.dart';
 import 'supplier_provider.dart';
 import 'supplier_payment_provider.dart';
-import '../models/payment.dart';
-import '../models/supplier_payment.dart';
 
 enum LedgerSortOrder {
   recent,
@@ -306,35 +304,70 @@ List<LedgerEntry> buildLedgerEntries({
 
   entries.sort((a, b) => a.date.compareTo(b.date));
 
-  double running = 0;
+  final clientBalances = <String, double>{};
+  final supplierBalances = <String, double>{};
+  double generalSingleRunning = 0;
+
   for (int i = 0; i < entries.length; i++) {
     final entry = entries[i];
+    double currentBalance = 0;
+
     if (filter.clientId != null) {
-      // Client ledger: Invoices and billable expenses increase what they owe us, Payments decrease it
       if (entry.type == LedgerEntryType.invoice) {
-        running += entry.debit;
+        generalSingleRunning += entry.debit;
       } else if (entry.type == LedgerEntryType.payment) {
-        running -= entry.credit;
+        generalSingleRunning -= entry.credit;
       } else if (entry.type == LedgerEntryType.expense) {
-        running += entry.debit;
+        generalSingleRunning += entry.debit;
       }
+      currentBalance = generalSingleRunning;
     } else if (filter.supplierId != null) {
-      // Supplier ledger: PO increases what we owe them (credit), Supplier Payment decreases it (debit)
       if (entry.type == LedgerEntryType.purchaseOrder) {
-        running += entry.credit;
+        generalSingleRunning += entry.credit;
       } else if (entry.type == LedgerEntryType.supplierPayment) {
-        running -= entry.debit;
+        generalSingleRunning -= entry.debit;
       }
+      currentBalance = generalSingleRunning;
     } else {
-      // General Ledger (progressive running balance)
-      if (entry.type != LedgerEntryType.estimate) {
-        if (entry.type == LedgerEntryType.purchaseOrder) {
-          running += entry.credit;
-        } else if (entry.type == LedgerEntryType.supplierPayment) {
-          running -= entry.debit;
+      // General Ledger (All Accounts view) - Track balance per counterparty stream
+      final cpId = entry.counterpartyId;
+      if (entry.type == LedgerEntryType.purchaseOrder) {
+        final key = cpId ?? 'default_supplier';
+        final prev = supplierBalances[key] ?? 0;
+        final updated = prev + entry.credit;
+        supplierBalances[key] = updated;
+        currentBalance = updated;
+      } else if (entry.type == LedgerEntryType.supplierPayment) {
+        final key = cpId ?? 'default_supplier';
+        final prev = supplierBalances[key] ?? 0;
+        final updated = prev - entry.debit;
+        supplierBalances[key] = updated;
+        currentBalance = updated;
+      } else if (entry.type == LedgerEntryType.invoice) {
+        final key = cpId ?? 'default_client';
+        final prev = clientBalances[key] ?? 0;
+        final updated = prev + entry.debit;
+        clientBalances[key] = updated;
+        currentBalance = updated;
+      } else if (entry.type == LedgerEntryType.payment) {
+        final key = cpId ?? 'default_client';
+        final prev = clientBalances[key] ?? 0;
+        final updated = prev - entry.credit;
+        clientBalances[key] = updated;
+        currentBalance = updated;
+      } else if (entry.type == LedgerEntryType.expense) {
+        if (entry.debit > 0 && cpId != null) {
+          final prev = clientBalances[cpId] ?? 0;
+          final updated = prev + entry.debit;
+          clientBalances[cpId] = updated;
+          currentBalance = updated;
         } else {
-          running += entry.debit - entry.credit;
+          generalSingleRunning += entry.debit - entry.credit;
+          currentBalance = generalSingleRunning;
         }
+      } else {
+        generalSingleRunning += entry.debit - entry.credit;
+        currentBalance = generalSingleRunning;
       }
     }
 
@@ -348,7 +381,7 @@ List<LedgerEntry> buildLedgerEntries({
       counterpartyId: entry.counterpartyId,
       debit: entry.debit,
       credit: entry.credit,
-      balance: running,
+      balance: currentBalance,
       status: entry.status,
     );
   }

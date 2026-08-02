@@ -9,6 +9,7 @@ import '../providers/payment_provider.dart';
 import '../providers/estimate_provider.dart';
 import '../providers/client_provider.dart';
 import '../providers/purchase_order_provider.dart';
+import '../providers/supplier_payment_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/theme_provider.dart';
 import '../models/settings.dart';
@@ -77,6 +78,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with WidgetsB
     final themeMode = ref.watch(themeModeProvider);
     final payments = ref.watch(paymentsProvider);
     final purchaseOrders = ref.watch(purchaseOrdersProvider);
+    final supplierPayments = ref.watch(supplierPaymentsProvider);
     final theme = Theme.of(context);
 
     final invoiceMap = {for (final i in invoices) i.id: i};
@@ -94,7 +96,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with WidgetsB
       return linkedInv == null || linkedInv.status == 'Draft' || linkedInv.status == 'Cancelled';
     }).fold(0.0, (sum, e) => sum + e.amount * (1 + e.markupPercent / 100));
 
-    final outstanding = totalRevenueGross + totalUnbilledExpenses - totalCollected;
+    final clientOutstanding = totalRevenueGross + totalUnbilledExpenses - totalCollected;
+    final validPos = purchaseOrders.where((po) => po.status != 'Draft' && po.status != 'Cancelled').toList();
+    final totalPurchases = validPos.fold(0.0, (s, po) => s + po.totalAmount);
+    final totalSupplierPaid = supplierPayments.fold(0.0, (s, sp) => s + sp.amount);
+    final supplierOutstanding = totalPurchases - totalSupplierPaid;
+
+    final outstanding = clientOutstanding + supplierOutstanding;
 
     final totalExpenses = expenses.where((e) => !e.isBillable).fold(0.0, (sum, e) => sum + e.amount);
     final productMap = {for (final p in products) p.id: p};
