@@ -575,13 +575,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       ListTile(
                         contentPadding: EdgeInsets.zero,
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)]), borderRadius: BorderRadius.circular(12)),
-                          child: const Icon(Icons.receipt_long, color: Colors.white, size: 24),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            'assets/images/prime_ledger_logo.png',
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                         title: const Text('PrimeLedger', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                        subtitle: Text('v$_appVersion • Invoice & Stock Management'),
+                        subtitle: Text('v$_appVersion • Invoicing, Stock & Ledger SaaS'),
                       ),
                       const Divider(),
                       ListTile(

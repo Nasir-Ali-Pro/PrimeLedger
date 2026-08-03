@@ -71,15 +71,27 @@ class _OnboardingBodyState extends State<_OnboardingBody> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 160,
-                        height: 160,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _pages[index]['color'].withValues(alpha: 0.1),
+                      if (index == 0) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(30),
+                          child: Image.asset(
+                            'assets/images/prime_ledger_logo.png',
+                            width: 140,
+                            height: 140,
+                            fit: BoxFit.cover,
+                          ),
                         ),
-                        child: Icon(_pages[index]['icon'], size: 80, color: _pages[index]['color']),
-                      ),
+                      ] else ...[
+                        Container(
+                          width: 160,
+                          height: 160,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _pages[index]['color'].withValues(alpha: 0.1),
+                          ),
+                          child: Icon(_pages[index]['icon'], size: 80, color: _pages[index]['color']),
+                        ),
+                      ],
                       const SizedBox(height: 48),
                       Text(
                         _pages[index]['title'],

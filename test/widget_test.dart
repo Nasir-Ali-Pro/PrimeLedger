@@ -10,9 +10,6 @@ class FakeSecureStorageService implements SecureStorageService {
   final Map<String, String> _data = {};
 
   @override
-  dynamic get _storage => null;
-
-  @override
   Future<void> write(String key, String value) async {
     _data[key] = value;
   }

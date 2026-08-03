@@ -9,7 +9,7 @@ class PdfService {
   static Future<void> generateInvoicePdf(Map<String, dynamic> invoiceData, AppSettings settings) async {
     final pdf = pw.Document();
     
-    pw.MemoryImage? logoImage;
+    pw.ImageProvider? logoImage;
     if (settings.companyLogoBase64 != null && settings.companyLogoBase64!.isNotEmpty) {
       try {
         final file = File(settings.companyLogoBase64!);
@@ -21,6 +21,11 @@ class PdfService {
       } catch (e) {
         // ignore
       }
+    }
+    try {
+      logoImage ??= await imageFromAssetBundle('assets/images/prime_ledger_logo.png');
+    } catch (e) {
+      // ignore
     }
 
     final List<dynamic> rawItems = invoiceData['items'] ?? [];
