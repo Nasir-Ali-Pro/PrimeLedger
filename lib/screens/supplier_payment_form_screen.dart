@@ -7,6 +7,7 @@ import '../providers/supplier_payment_provider.dart';
 import '../providers/purchase_order_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/loading_overlay.dart';
+import '../utils/error_handler.dart';
 
 class SupplierPaymentFormScreen extends ConsumerStatefulWidget {
   final String purchaseOrderId;
@@ -169,17 +170,13 @@ class _SupplierPaymentFormScreenState extends ConsumerState<SupplierPaymentFormS
                       try {
                         await ref.read(supplierPaymentsProvider.notifier).addPayment(payment);
                         LoadingOverlay.hide();
-                        scaffoldMessenger.showSnackBar(const SnackBar(
-                          content: Text('Supplier payment recorded successfully!'),
-                          backgroundColor: Color(0xFF10B981),
-                        ));
+                        AppErrorHandler.showSuccessSnackBar(context, 'Supplier payment recorded successfully!');
                         router.pop();
                       } catch (e) {
                         LoadingOverlay.hide();
-                        scaffoldMessenger.showSnackBar(SnackBar(
-                          content: Text('Failed to record supplier payment: $e'),
-                          backgroundColor: const Color(0xFFEF4444),
-                        ));
+                        if (mounted) {
+                          AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Failed to record supplier payment');
+                        }
                       }
                     }
                   },

@@ -11,6 +11,7 @@ import '../providers/payment_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/loading_overlay.dart';
+import '../utils/error_handler.dart';
 import '../theme.dart';
 import '../widgets/product_search_sheet.dart';
 
@@ -305,22 +306,12 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
       }
       LoadingOverlay.hide();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isEditing ? 'Invoice updated' : 'Invoice created'),
-          backgroundColor: const Color(0xFF10B981),
-        ),
-      );
+      AppErrorHandler.showSuccessSnackBar(context, isEditing ? 'Invoice updated successfully' : 'Invoice created successfully');
       context.pop();
     } catch (e) {
       LoadingOverlay.hide();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to save invoice: $e'),
-          backgroundColor: const Color(0xFFEF4444),
-        ),
-      );
+      AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Failed to save invoice');
     }
   }
 

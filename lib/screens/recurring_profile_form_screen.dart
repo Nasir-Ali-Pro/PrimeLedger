@@ -6,6 +6,7 @@ import '../models/recurring_profile.dart';
 import '../providers/recurring_profile_provider.dart';
 import '../providers/client_provider.dart';
 import '../widgets/loading_overlay.dart';
+import '../utils/error_handler.dart';
 
 class RecurringProfileFormScreen extends ConsumerStatefulWidget {
   final String? id;
@@ -202,17 +203,13 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
         }
         LoadingOverlay.hide();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile saved'), backgroundColor: Color(0xFF10B981)),
-          );
+          AppErrorHandler.showSuccessSnackBar(context, widget.id == null ? 'Profile saved successfully' : 'Profile updated successfully');
           context.pop();
         }
       } catch (e) {
         LoadingOverlay.hide();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to save profile: $e'), backgroundColor: const Color(0xFFEF4444)),
-          );
+          AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Failed to save profile');
         }
       }
     }

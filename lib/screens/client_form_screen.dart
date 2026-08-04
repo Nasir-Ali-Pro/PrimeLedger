@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../models/client.dart';
 import '../providers/client_provider.dart';
 import '../widgets/loading_overlay.dart';
+import '../utils/error_handler.dart';
 import '../theme.dart';
 
 class ClientFormScreen extends ConsumerStatefulWidget {
@@ -185,23 +186,13 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
                         }
                         LoadingOverlay.hide();
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(isEditing ? 'Client updated' : 'Client added'),
-                              backgroundColor: const Color(0xFF10B981),
-                            ),
-                          );
+                          AppErrorHandler.showSuccessSnackBar(context, isEditing ? 'Client updated successfully' : 'Client added successfully');
                           context.pop();
                         }
                       } catch (e) {
                         LoadingOverlay.hide();
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Failed to save client: $e'),
-                              backgroundColor: const Color(0xFFEF4444),
-                            ),
-                          );
+                          AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Failed to save client');
                         }
                       }
                     }

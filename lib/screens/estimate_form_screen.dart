@@ -10,6 +10,7 @@ import '../providers/invoice_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/loading_overlay.dart';
+import '../utils/error_handler.dart';
 import '../theme.dart';
 import '../widgets/product_search_sheet.dart';
 
@@ -218,21 +219,13 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
       await ref.read(productsProvider.notifier).refresh();
 
       LoadingOverlay.hide();
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: Text('Converted to Invoice $targetInvNum! Inventory stock updated.'),
-          backgroundColor: const Color(0xFF10B981),
-        ),
-      );
+      AppErrorHandler.showSuccessSnackBar(context, 'Converted to Invoice $targetInvNum! Inventory stock updated.');
       navigator.pop();
     } catch (e) {
       LoadingOverlay.hide();
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: Text('Failed to convert: $e'),
-          backgroundColor: const Color(0xFFEF4444),
-        ),
-      );
+      if (mounted) {
+        AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Failed to convert');
+      }
     }
   }
   void _showProductSearchBottomSheet(BuildContext context, int index) {
@@ -310,22 +303,12 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
       }
       LoadingOverlay.hide();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isEditing ? 'Estimate updated' : 'Estimate saved'),
-          backgroundColor: const Color(0xFF10B981),
-        ),
-      );
+      AppErrorHandler.showSuccessSnackBar(context, isEditing ? 'Estimate updated successfully' : 'Estimate saved successfully');
       context.pop();
     } catch (e) {
       LoadingOverlay.hide();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to save estimate: $e'),
-          backgroundColor: const Color(0xFFEF4444),
-        ),
-      );
+      AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Failed to save estimate');
     }
   }
 

@@ -21,6 +21,7 @@ import '../providers/purchase_order_provider.dart';
 import '../providers/time_entry_provider.dart';
 import '../providers/recurring_profile_provider.dart';
 import '../database/database_provider.dart';
+import '../utils/error_handler.dart';
 import 'package:go_router/go_router.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -154,15 +155,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         text: 'PrimeLedger Database Backup',
       );
       if (context.mounted && result.status == ShareResultStatus.success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Backup exported successfully!'), backgroundColor: Color(0xFF10B981)),
-        );
+        AppErrorHandler.showSuccessSnackBar(context, 'Backup exported successfully!');
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e'), backgroundColor: const Color(0xFFEF4444)),
-        );
+        AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Export failed');
       }
     }
   }
@@ -216,15 +213,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ref.invalidate(settingsProvider);
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Backup imported successfully!'), backgroundColor: Color(0xFF10B981)),
-        );
+        AppErrorHandler.showSuccessSnackBar(context, 'Backup imported successfully!');
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: $e'), backgroundColor: const Color(0xFFEF4444)),
-        );
+        AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Import failed');
       }
     }
   }

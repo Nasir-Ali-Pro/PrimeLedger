@@ -6,6 +6,7 @@ import '../models/supplier.dart';
 import '../providers/supplier_provider.dart';
 
 import '../widgets/loading_overlay.dart';
+import '../utils/error_handler.dart';
 
 class SupplierFormScreen extends ConsumerStatefulWidget {
   final String? id;
@@ -127,23 +128,13 @@ class _SupplierFormScreenState extends ConsumerState<SupplierFormScreen> {
                         }
                         LoadingOverlay.hide();
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(isEditing ? 'Supplier updated' : 'Supplier added'),
-                              backgroundColor: const Color(0xFF10B981),
-                            ),
-                          );
+                          AppErrorHandler.showSuccessSnackBar(context, isEditing ? 'Supplier updated successfully' : 'Supplier added successfully');
                           context.pop();
                         }
                       } catch (e) {
                         LoadingOverlay.hide();
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Failed to save supplier: $e'),
-                              backgroundColor: const Color(0xFFEF4444),
-                            ),
-                          );
+                          AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Failed to save supplier');
                         }
                       }
                     }

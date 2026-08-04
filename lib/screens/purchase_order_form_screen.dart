@@ -7,6 +7,7 @@ import '../providers/purchase_order_provider.dart';
 import '../providers/supplier_provider.dart';
 import '../providers/product_provider.dart';
 import '../widgets/loading_overlay.dart';
+import '../utils/error_handler.dart';
 import '../theme.dart';
 import '../models/settings.dart';
 import '../providers/settings_provider.dart';
@@ -150,22 +151,12 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
       }
       LoadingOverlay.hide();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isEditing ? 'Purchase order updated' : 'Purchase order saved'),
-          backgroundColor: const Color(0xFF10B981),
-        ),
-      );
+      AppErrorHandler.showSuccessSnackBar(context, isEditing ? 'Purchase order updated successfully' : 'Purchase order saved successfully');
       context.pop();
     } catch (e) {
       LoadingOverlay.hide();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to save purchase order: $e'),
-          backgroundColor: const Color(0xFFEF4444),
-        ),
-      );
+      AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Failed to save purchase order');
     }
   }
 

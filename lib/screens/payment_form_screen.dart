@@ -8,6 +8,7 @@ import '../providers/invoice_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/loading_overlay.dart';
+import '../utils/error_handler.dart';
 
 class PaymentFormScreen extends ConsumerStatefulWidget {
   final String invoiceId;
@@ -172,21 +173,13 @@ class _PaymentFormScreenState extends ConsumerState<PaymentFormScreen> {
                       try {
                         await ref.read(paymentsProvider.notifier).addPayment(payment);
                         LoadingOverlay.hide();
-                        scaffoldMessenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('Payment recorded successfully!'),
-                            backgroundColor: Color(0xFF10B981),
-                          ),
-                        );
+                        AppErrorHandler.showSuccessSnackBar(context, 'Payment recorded successfully!');
                         router.pop();
                       } catch (e) {
                         LoadingOverlay.hide();
-                        scaffoldMessenger.showSnackBar(
-                          SnackBar(
-                            content: Text('Failed to record payment: $e'),
-                            backgroundColor: const Color(0xFFEF4444),
-                          ),
-                        );
+                        if (mounted) {
+                          AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Failed to record payment');
+                        }
                       }
                     }
                   },

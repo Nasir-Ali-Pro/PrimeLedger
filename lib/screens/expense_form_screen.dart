@@ -9,6 +9,7 @@ import '../models/expense.dart';
 import '../providers/expense_provider.dart';
 import '../providers/client_provider.dart';
 import '../widgets/loading_overlay.dart';
+import '../utils/error_handler.dart';
 import '../theme.dart';
 import '../providers/settings_provider.dart';
 
@@ -94,22 +95,12 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
         }
         LoadingOverlay.hide();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isEditing ? 'Expense updated' : 'Expense saved'),
-            backgroundColor: const Color(0xFF10B981),
-          ),
-        );
+        AppErrorHandler.showSuccessSnackBar(context, isEditing ? 'Expense updated successfully' : 'Expense saved successfully');
         context.pop();
       } catch (e) {
         LoadingOverlay.hide();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save expense: $e'),
-            backgroundColor: const Color(0xFFEF4444),
-          ),
-        );
+        AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Failed to save expense');
       }
     }
   }
