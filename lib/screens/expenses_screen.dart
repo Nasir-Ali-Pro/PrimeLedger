@@ -155,57 +155,86 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                             : null,
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         itemCount: expenses.length,
                         itemBuilder: (context, index) {
                           final expense = expenses[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Slidable(
-                              key: ValueKey(expense.id),
-                              endActionPane: ActionPane(
-                                motion: const ScrollMotion(),
-                                children: [
-                                  SlidableAction(
-                                    onPressed: (_) => _confirmDelete(expense),
-                                    backgroundColor: const Color(0xFFEF4444),
-                                    foregroundColor: Colors.white,
-                                    icon: Icons.delete,
-                                    label: 'Delete',
-                                  ),
-                                ],
-                              ),
-                              child: Card(
-                                child: ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                  leading: CircleAvatar(
-                                    backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                                    child: const Icon(Icons.receipt, color: Color(0xFF6366F1)),
-                                  ),
-                                  title: Text(expense.description, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const SizedBox(height: 4),
-                                      Wrap(
-                                        spacing: 8,
-                                        runSpacing: 4,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF6366F1).withValues(alpha: 0.1),
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Text(expense.category, style: const TextStyle(fontSize: 11, color: Color(0xFF6366F1), fontWeight: FontWeight.w600)),
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(color: theme.dividerColor),
+                            ),
+                            child: InkWell(
+                              onTap: () => context.go('/expenses/edit/${expense.id}'),
+                              borderRadius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Row(
+                                            children: [
+                                              CircleAvatar(
+                                                backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                                                child: const Icon(Icons.receipt, color: Color(0xFF6366F1), size: 20),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(expense.description, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                                    const SizedBox(height: 2),
+                                                    Text(DateFormat('MMM dd, yyyy').format(expense.date), style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          Text(DateFormat('MMM dd, yyyy').format(expense.date), style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  trailing: Text(settings.formatCurrency(expense.amount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFEF4444))),
-                                  onTap: () => context.go('/expenses/edit/${expense.id}'),
+                                        ),
+                                        Text(settings.formatCurrency(expense.amount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFEF4444))),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(expense.category, style: const TextStyle(fontSize: 11, color: Color(0xFF6366F1), fontWeight: FontWeight.w600)),
+                                        ),
+                                        Row(
+                                          children: [
+                                            OutlinedButton.icon(
+                                              onPressed: () => context.go('/expenses/edit/${expense.id}'),
+                                              icon: const Icon(Icons.edit, size: 16, color: Color(0xFF4F46E5)),
+                                              label: const Text('Edit', style: TextStyle(color: Color(0xFF4F46E5), fontSize: 12, fontWeight: FontWeight.w600)),
+                                              style: OutlinedButton.styleFrom(
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 20),
+                                              tooltip: 'Delete Expense',
+                                              onPressed: () => _confirmDelete(expense),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),

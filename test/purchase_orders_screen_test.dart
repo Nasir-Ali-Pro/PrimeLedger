@@ -61,17 +61,10 @@ void main() {
     // Verify PO is displayed
     expect(find.text('PO-1001'), findsOneWidget);
 
-    // 3. Swipe the PO list item to show slidable actions
-    print('Swiping list item...');
-    await tester.drag(find.text('PO-1001'), const Offset(-500, 0));
-    await tester.pumpAndSettle();
-
-    // Verify Delete button is visible
-    final deleteButton = find.text('Delete');
-    expect(deleteButton, findsOneWidget);
-
-    // 4. Tap the delete button
+    // 3. Tap the directly visible delete button
     print('Tapping delete action...');
+    final deleteButton = find.byIcon(Icons.delete_outline);
+    expect(deleteButton, findsOneWidget);
     await tester.tap(deleteButton);
     await tester.pumpAndSettle();
 

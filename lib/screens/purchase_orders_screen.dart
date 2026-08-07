@@ -118,12 +118,13 @@ class _PurchaseOrdersScreenState extends ConsumerState<PurchaseOrdersScreen> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     itemCount: filteredOrders.length,
                     itemBuilder: (context, index) {
                       final po = filteredOrders[index];
                       final payments = supplierPayments.where((p) => p.purchaseOrderId == po.id);
                       final totalPaid = payments.fold<double>(0.0, (sum, p) => sum + p.amount);
+                      final remaining = (po.totalAmount - totalPaid).clamp(0.0, double.infinity);
                       
                       String paymentStatus;
                       if (totalPaid >= po.totalAmount - 0.01) {
@@ -134,129 +135,177 @@ class _PurchaseOrdersScreenState extends ConsumerState<PurchaseOrdersScreen> {
                         paymentStatus = 'Unpaid';
                       }
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Slidable(
-                          key: ValueKey(po.id),
-                          endActionPane: ActionPane(
-                            motion: const ScrollMotion(),
-                            children: [
-                              if (po.status != 'Cancelled' && totalPaid < po.totalAmount - 0.01)
-                                SlidableAction(
-                                  onPressed: (ctx) {
-                                    ctx.push('/purchase-orders/pay/${po.id}');
-                                  },
-                                  backgroundColor: const Color(0xFF3B82F6),
-                                  foregroundColor: Colors.white,
-                                  icon: Icons.payment,
-                                  label: 'Pay',
-                                ),
-                              if (po.status != 'Received' && po.status != 'Cancelled')
-                                SlidableAction(
-                                  onPressed: (ctx) async {
-                                    final confirmed = await showDialog<bool>(
-                                      context: ctx,
-                                      builder: (dialogCtx) => AlertDialog(
-                                        title: const Text('Confirm Receive'),
-                                        content: const Text('Receive this purchase order? Stock will be auto-adjusted and products created.'),
-                                        actions: [
-                                          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Cancel')),
-                                          TextButton(onPressed: () => Navigator.pop(dialogCtx, true), child: const Text('Receive')),
+                      final isPayable = po.status != 'Cancelled' && remaining > 0.01;
+                      final isReceivable = po.status != 'Received' && po.status != 'Cancelled';
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: theme.dividerColor),
+                        ),
+                        child: InkWell(
+                          onTap: () => context.go('/purchase-orders/edit/${po.id}'),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            backgroundColor: const Color(0xFF14B8A6).withValues(alpha: 0.1),
+                                            child: const Icon(Icons.shopping_cart, color: Color(0xFF14B8A6), size: 20),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(po.poNumber, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                              Text('PO Total: ${settings.formatCurrency(po.totalAmount)}', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13)),
+                                            ],
+                                          ),
                                         ],
                                       ),
-                                    );
-                                    if (confirmed == true) {
-                                      await ref.read(purchaseOrdersProvider.notifier).receivePurchaseOrder(po.id);
-                                      if (ctx.mounted) {
-                                        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-                                          content: Text('Purchase order received! Products and stock updated.'),
-                                          backgroundColor: Color(0xFF10B981),
-                                        ));
-                                      }
-                                    }
-                                  },
-                                  backgroundColor: const Color(0xFF10B981),
-                                  foregroundColor: Colors.white,
-                                  icon: Icons.inventory_2,
-                                  label: 'Receive',
-                                ),
-                              SlidableAction(
-                                onPressed: (ctx) async {
-                                  final confirmed = await showDialog<bool>(
-                                    context: ctx,
-                                    builder: (dialogCtx) => AlertDialog(
-                                      title: const Text('Confirm Delete'),
-                                      content: const Text('Are you sure? This cannot be undone.'),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Cancel')),
-                                        TextButton(onPressed: () => Navigator.pop(dialogCtx, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: const Text('Delete')),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        _buildStatusBadge(po.status),
+                                        const SizedBox(height: 4),
+                                        _buildPaymentStatusBadge(paymentStatus),
                                       ],
                                     ),
-                                  );
-                                  if (confirmed == true) {
-                                    try {
-                                      await ref.read(purchaseOrdersProvider.notifier).deletePurchaseOrder(po.id);
-                                      if (ctx.mounted) {
-                                        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-                                          content: Text('Purchase order deleted successfully.'),
-                                          backgroundColor: Color(0xFF10B981),
-                                        ));
-                                      }
-                                    } catch (e) {
-                                      if (ctx.mounted) {
-                                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                                          content: Text('Error deleting purchase order: $e'),
-                                          backgroundColor: const Color(0xFFEF4444),
-                                        ));
-                                      }
-                                    }
-                                  }
-                                },
-                                backgroundColor: const Color(0xFFEF4444),
-                                foregroundColor: Colors.white,
-                                icon: Icons.delete,
-                                label: 'Delete',
-                              ),
-                            ],
-                          ),
-                          child: Card(
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                              leading: CircleAvatar(
-                                backgroundColor: const Color(0xFF14B8A6).withValues(alpha: 0.1),
-                                child: const Icon(Icons.shopping_cart, color: Color(0xFF14B8A6)),
-                              ),
-                              title: Text(po.poNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 4),
-                                  Text(settings.formatCurrency(po.totalAmount), style: const TextStyle(fontWeight: FontWeight.w600)),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Paid: ${settings.formatCurrency(totalPaid)} / ${settings.formatCurrency(po.totalAmount)}',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
-                                      color: totalPaid >= po.totalAmount - 0.01
-                                          ? const Color(0xFF10B981)
-                                          : totalPaid > 0.01
-                                              ? const Color(0xFFF59E0B)
-                                              : Colors.grey,
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                const Divider(height: 1),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Paid: ${settings.formatCurrency(totalPaid)} / ${settings.formatCurrency(po.totalAmount)}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: totalPaid >= po.totalAmount - 0.01
+                                            ? const Color(0xFF10B981)
+                                            : totalPaid > 0.01
+                                                ? const Color(0xFFF59E0B)
+                                                : Colors.grey,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              trailing: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  _buildStatusBadge(po.status),
-                                  const SizedBox(height: 4),
-                                  _buildPaymentStatusBadge(paymentStatus),
-                                ],
-                              ),
-                              onTap: () => context.go('/purchase-orders/edit/${po.id}'),
+                                    if (remaining > 0.01)
+                                      Text(
+                                        'Owed: ${settings.formatCurrency(remaining)}',
+                                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFEF4444)),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    if (isPayable)
+                                      ElevatedButton.icon(
+                                        onPressed: () => context.push('/purchase-orders/pay/${po.id}'),
+                                        icon: const Icon(Icons.payment, size: 16, color: Colors.white),
+                                        label: const Text('Pay', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF3B82F6),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                      ),
+                                    if (isReceivable)
+                                      ElevatedButton.icon(
+                                        onPressed: () async {
+                                          final confirmed = await showDialog<bool>(
+                                            context: context,
+                                            builder: (dialogCtx) => AlertDialog(
+                                              title: const Text('Confirm Receive'),
+                                              content: const Text('Receive this purchase order? Stock will be auto-adjusted and products created.'),
+                                              actions: [
+                                                TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Cancel')),
+                                                TextButton(onPressed: () => Navigator.pop(dialogCtx, true), child: const Text('Receive')),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirmed == true) {
+                                            await ref.read(purchaseOrdersProvider.notifier).receivePurchaseOrder(po.id);
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                                content: Text('Purchase order received! Products and stock updated.'),
+                                                backgroundColor: Color(0xFF10B981),
+                                              ));
+                                            }
+                                          }
+                                        },
+                                        icon: const Icon(Icons.inventory_2, size: 16, color: Colors.white),
+                                        label: const Text('Receive', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF10B981),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                      ),
+                                    OutlinedButton.icon(
+                                      onPressed: () => context.go('/purchase-orders/edit/${po.id}'),
+                                      icon: const Icon(Icons.edit, size: 16, color: Color(0xFF14B8A6)),
+                                      label: const Text('Edit', style: TextStyle(color: Color(0xFF14B8A6), fontSize: 12, fontWeight: FontWeight.w600)),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        side: const BorderSide(color: Color(0xFF14B8A6)),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 20),
+                                      tooltip: 'Delete PO',
+                                      onPressed: () async {
+                                        final confirmed = await showDialog<bool>(
+                                          context: context,
+                                          builder: (dialogCtx) => AlertDialog(
+                                            title: const Text('Confirm Delete'),
+                                            content: const Text('Are you sure? This cannot be undone.'),
+                                            actions: [
+                                              TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Cancel')),
+                                              TextButton(onPressed: () => Navigator.pop(dialogCtx, true), style: TextButton.styleFrom(foregroundColor: Colors.red), child: const Text('Delete')),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirmed == true) {
+                                          try {
+                                            await ref.read(purchaseOrdersProvider.notifier).deletePurchaseOrder(po.id);
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                                content: Text('Purchase order deleted successfully.'),
+                                                backgroundColor: Color(0xFF10B981),
+                                              ));
+                                            }
+                                          } catch (e) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                                content: Text('Error deleting purchase order: $e'),
+                                                backgroundColor: const Color(0xFFEF4444),
+                                              ));
+                                            }
+                                          }
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
                         ),

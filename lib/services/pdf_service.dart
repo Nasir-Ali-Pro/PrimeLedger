@@ -306,6 +306,13 @@ class PdfService {
     );
   }
 
+  static Future<void> generateEstimatePdf(Map<String, dynamic> estimateData, AppSettings settings) async {
+    final map = Map<String, dynamic>.from(estimateData);
+    map['invoiceNumber'] = estimateData['estimateNumber'];
+    map['dueDate'] = estimateData['issueDate'];
+    await generateInvoicePdf(map, settings);
+  }
+
   static PdfColor _getPdfStatusColor(String status) {
     switch (status) {
       case 'Paid':

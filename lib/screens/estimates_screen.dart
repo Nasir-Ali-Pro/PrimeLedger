@@ -13,6 +13,7 @@ import '../models/invoice.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/confirm_dialog.dart';
+import '../services/pdf_service.dart';
 import '../widgets/loading_overlay.dart';
 
 class EstimatesScreen extends ConsumerStatefulWidget {
@@ -123,182 +124,263 @@ class _EstimatesScreenState extends ConsumerState<EstimatesScreen> {
                     onAction: _searchQuery.isEmpty ? () => context.go('/estimates/new') : null,
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     itemCount: filteredEstimates.length,
                     itemBuilder: (context, index) {
                       final est = filteredEstimates[index];
                       final clientName = clientMap[est.clientId] ?? 'Unknown Client';
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Slidable(
-                          key: ValueKey(est.id),
-                          endActionPane: ActionPane(
-                            motion: const ScrollMotion(),
-                            children: [
-                              if (est.status != 'Converted')
-                                SlidableAction(
-                                  onPressed: (ctx) async {
-                                    final products = ref.read(productsProvider);
-                                    final warnings = <String>[];
-                                    for (final item in est.items) {
-                                      if (item.productId != null) {
-                                        final prod = products.where((p) => p.id == item.productId).firstOrNull;
-                                        if (prod != null && item.quantity > prod.quantity) {
-                                          warnings.add('• ${prod.name}: ${item.quantity} requested, but only ${prod.quantity} available in stock.');
-                                        }
-                                      }
-                                    }
+                      final isConverted = est.status == 'Converted';
 
-                                    final confirmed = await showDialog<bool>(
-                                      context: context,
-                                      builder: (dialogCtx) => AlertDialog(
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                        title: Text(warnings.isNotEmpty ? 'Low Product Availability' : 'Convert to Invoice?'),
-                                        content: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            if (warnings.isNotEmpty) ...[
-                                              const Text(
-                                                'The following item(s) exceed current inventory stock:',
-                                                style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFEF4444)),
-                                              ),
-                                              const SizedBox(height: 8),
-                                              ...warnings.map((w) => Padding(
-                                                padding: const EdgeInsets.only(bottom: 4),
-                                                child: Text(w, style: const TextStyle(fontSize: 13, color: Color(0xFFDC2626))),
-                                              )),
-                                              const SizedBox(height: 12),
-                                              const Text('Converting will create an active invoice, deduct inventory stock, and log stock movements. Do you want to proceed?'),
-                                            ] else ...[
-                                              const Text('This will create an active invoice with these items, deduct inventory stock, log stock movements, and mark this estimate as Converted.'),
-                                            ],
-                                          ],
-                                        ),
-                                        actions: [
-                                          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Cancel')),
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(dialogCtx, true),
-                                            child: Text(warnings.isNotEmpty ? 'Proceed Conversion' : 'Convert', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: theme.dividerColor),
+                        ),
+                        child: InkWell(
+                          onTap: () => context.go('/estimates/edit/${est.id}'),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            backgroundColor: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                                            child: const Icon(Icons.description, color: Color(0xFF8B5CF6), size: 20),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(est.estimateNumber, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                                Text(clientName, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13), overflow: TextOverflow.ellipsis),
+                                              ],
+                                            ),
                                           ),
                                         ],
                                       ),
-                                    );
-
-                                    if (confirmed != true) return;
-                                    // ignore: use_build_context_synchronously
-                                    LoadingOverlay.show(context, message: 'Converting & Updating Inventory...');
-                                    try {
-                                      final allInvoices = ref.read(invoicesProvider);
-                                      final existingInv = allInvoices.where((i) => i.notes != null && i.notes!.contains(est.estimateNumber)).firstOrNull;
-
-                                      final newInvoiceItems = est.items.map((i) => InvoiceItem(
-                                        id: const Uuid().v4(),
-                                        productId: i.productId,
-                                        description: i.description,
-                                        quantity: i.quantity,
-                                        rate: i.rate,
-                                        taxPercent: i.taxPercent,
-                                        taxAmount: i.taxAmount,
-                                        discountPercent: i.discountPercent,
-                                        total: i.total,
-                                      )).toList();
-
-                                      String targetInvNum = '';
-                                      if (existingInv != null) {
-                                        targetInvNum = existingInv.invoiceNumber;
-                                        final updatedInvoice = existingInv.copyWith(
-                                          items: newInvoiceItems,
-                                          subTotal: est.subTotal,
-                                          taxTotal: est.taxTotal,
-                                          totalAmount: est.totalAmount,
-                                          discountPercent: est.discountPercent,
-                                          discountAmount: est.discountAmount,
-                                          notes: 'Converted from Estimate ${est.estimateNumber}',
-                                        );
-                                        await ref.read(invoicesProvider.notifier).updateInvoice(updatedInvoice);
-                                      } else {
-                                        targetInvNum = 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-                                        final invoice = Invoice(
-                                          id: const Uuid().v4(),
-                                          clientId: est.clientId,
-                                          invoiceNumber: targetInvNum,
-                                          issueDate: DateTime.now(),
-                                          dueDate: DateTime.now().add(const Duration(days: 14)),
-                                          subTotal: est.subTotal,
-                                          taxTotal: est.taxTotal,
-                                          totalAmount: est.totalAmount,
-                                          status: 'Unpaid',
-                                          notes: 'Converted from Estimate ${est.estimateNumber}',
-                                          items: newInvoiceItems,
-                                        );
-                                        await ref.read(invoicesProvider.notifier).addInvoice(invoice);
-                                      }
-
-                                      final updated = est.copyWith(status: 'Converted');
-                                      await ref.read(estimatesProvider.notifier).updateEstimate(updated);
-                                      await ref.read(productsProvider.notifier).refresh();
-
-                                      LoadingOverlay.hide();
-                                      if (ctx.mounted) {
-                                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Converted to Invoice $targetInvNum! Inventory stock updated.'), backgroundColor: const Color(0xFF10B981)));
-                                      }
-                                    } catch (e) {
-                                      LoadingOverlay.hide();
-                                      if (ctx.mounted) {
-                                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Failed to convert: $e'), backgroundColor: const Color(0xFFEF4444)));
-                                      }
-                                    }
-                                  },
-                                  backgroundColor: const Color(0xFF6366F1),
-                                  foregroundColor: Colors.white,
-                                  icon: Icons.transform,
-                                  label: 'Convert',
+                                    ),
+                                    StatusBadge(status: est.status),
+                                  ],
                                 ),
-                              if (est.status == 'Converted')
-                                SlidableAction(
-                                  onPressed: (ctx) async {
-                                    final updated = est.copyWith(status: 'Sent');
-                                    await ref.read(estimatesProvider.notifier).updateEstimate(updated);
-                                    if (ctx.mounted) {
-                                      ScaffoldMessenger.of(ctx).showSnackBar(
-                                        const SnackBar(content: Text('Estimate status reverted to Sent!'), backgroundColor: Color(0xFF3B82F6)),
-                                      );
-                                    }
-                                  },
-                                  backgroundColor: const Color(0xFF3B82F6),
-                                  foregroundColor: Colors.white,
-                                  icon: Icons.undo,
-                                  label: 'Revert',
+                                const SizedBox(height: 12),
+                                const Divider(height: 1),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Estimate Amount', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                                        Text(settings.formatCurrency(est.totalAmount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      ],
+                                    ),
+                                    Text('Date: ${est.issueDate.year}-${est.issueDate.month.toString().padLeft(2, '0')}-${est.issueDate.day.toString().padLeft(2, '0')}', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                                  ],
                                 ),
-                              SlidableAction(
-                                onPressed: (_) => _confirmDelete(est),
-                                backgroundColor: const Color(0xFFEF4444),
-                                foregroundColor: Colors.white,
-                                icon: Icons.delete,
-                                label: 'Delete',
-                              ),
-                            ],
-                          ),
-                          child: Card(
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                              leading: CircleAvatar(
-                                backgroundColor: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
-                                child: const Icon(Icons.description, color: Color(0xFF8B5CF6)),
-                              ),
-                              title: Row(
-                                children: [
-                                  Expanded(child: Text(est.estimateNumber, style: const TextStyle(fontWeight: FontWeight.bold))),
-                                  Text(settings.formatCurrency(est.totalAmount), style: const TextStyle(fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 4.0),
-                                child: Text(clientName, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-                              ),
-                              trailing: StatusBadge(status: est.status),
-                              onTap: () => context.go('/estimates/edit/${est.id}'),
+                                const SizedBox(height: 14),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    if (!isConverted)
+                                      ElevatedButton.icon(
+                                        onPressed: () async {
+                                          final products = ref.read(productsProvider);
+                                          final warnings = <String>[];
+                                          for (final item in est.items) {
+                                            if (item.productId != null) {
+                                              final prod = products.where((p) => p.id == item.productId).firstOrNull;
+                                              if (prod != null && item.quantity > prod.quantity) {
+                                                warnings.add('• ${prod.name}: ${item.quantity} requested, but only ${prod.quantity} available in stock.');
+                                              }
+                                            }
+                                          }
+
+                                          final confirmed = await showDialog<bool>(
+                                            context: context,
+                                            builder: (dialogCtx) => AlertDialog(
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                              title: Text(warnings.isNotEmpty ? 'Low Product Availability' : 'Convert to Invoice?'),
+                                              content: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  if (warnings.isNotEmpty) ...[
+                                                    const Text(
+                                                      'The following item(s) exceed current inventory stock:',
+                                                      style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFEF4444)),
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    ...warnings.map((w) => Padding(
+                                                      padding: const EdgeInsets.only(bottom: 4),
+                                                      child: Text(w, style: const TextStyle(fontSize: 13, color: Color(0xFFDC2626))),
+                                                    )),
+                                                    const SizedBox(height: 12),
+                                                    const Text('Converting will create an active invoice, deduct inventory stock, and log stock movements. Do you want to proceed?'),
+                                                  ] else ...[
+                                                    const Text('This will create an active invoice with these items, deduct inventory stock, log stock movements, and mark this estimate as Converted.'),
+                                                  ],
+                                                ],
+                                              ),
+                                              actions: [
+                                                TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Cancel')),
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(dialogCtx, true),
+                                                  child: Text(warnings.isNotEmpty ? 'Proceed Conversion' : 'Convert', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+
+                                          if (confirmed != true) return;
+                                          LoadingOverlay.show(context, message: 'Converting & Updating Inventory...');
+                                          try {
+                                            final allInvoices = ref.read(invoicesProvider);
+                                            final existingInv = allInvoices.where((i) => i.notes != null && i.notes!.contains(est.estimateNumber)).firstOrNull;
+
+                                            final newInvoiceItems = est.items.map((i) => InvoiceItem(
+                                              id: const Uuid().v4(),
+                                              productId: i.productId,
+                                              description: i.description,
+                                              quantity: i.quantity,
+                                              rate: i.rate,
+                                              taxPercent: i.taxPercent,
+                                              taxAmount: i.taxAmount,
+                                              discountPercent: i.discountPercent,
+                                              total: i.total,
+                                            )).toList();
+
+                                            String targetInvNum = '';
+                                            if (existingInv != null) {
+                                              targetInvNum = existingInv.invoiceNumber;
+                                              final updatedInvoice = existingInv.copyWith(
+                                                items: newInvoiceItems,
+                                                subTotal: est.subTotal,
+                                                taxTotal: est.taxTotal,
+                                                totalAmount: est.totalAmount,
+                                                discountPercent: est.discountPercent,
+                                                discountAmount: est.discountAmount,
+                                                notes: 'Converted from Estimate ${est.estimateNumber}',
+                                              );
+                                              await ref.read(invoicesProvider.notifier).updateInvoice(updatedInvoice);
+                                            } else {
+                                              targetInvNum = 'INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+                                              final invoice = Invoice(
+                                                id: const Uuid().v4(),
+                                                clientId: est.clientId,
+                                                invoiceNumber: targetInvNum,
+                                                issueDate: DateTime.now(),
+                                                dueDate: DateTime.now().add(const Duration(days: 14)),
+                                                subTotal: est.subTotal,
+                                                taxTotal: est.taxTotal,
+                                                totalAmount: est.totalAmount,
+                                                status: 'Unpaid',
+                                                notes: 'Converted from Estimate ${est.estimateNumber}',
+                                                items: newInvoiceItems,
+                                              );
+                                              await ref.read(invoicesProvider.notifier).addInvoice(invoice);
+                                            }
+
+                                            final updated = est.copyWith(status: 'Converted');
+                                            await ref.read(estimatesProvider.notifier).updateEstimate(updated);
+                                            await ref.read(productsProvider.notifier).refresh();
+
+                                            LoadingOverlay.hide();
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Converted to Invoice $targetInvNum! Inventory stock updated.'), backgroundColor: const Color(0xFF10B981)));
+                                            }
+                                          } catch (e) {
+                                            LoadingOverlay.hide();
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to convert: $e'), backgroundColor: const Color(0xFFEF4444)));
+                                            }
+                                          }
+                                        },
+                                        icon: const Icon(Icons.transform, size: 16, color: Colors.white),
+                                        label: const Text('Convert', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF6366F1),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                      ),
+                                    if (isConverted)
+                                      ElevatedButton.icon(
+                                        onPressed: () async {
+                                          final updated = est.copyWith(status: 'Sent');
+                                          await ref.read(estimatesProvider.notifier).updateEstimate(updated);
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Estimate status reverted to Sent!'), backgroundColor: Color(0xFF3B82F6)),
+                                            );
+                                          }
+                                        },
+                                        icon: const Icon(Icons.undo, size: 16, color: Colors.white),
+                                        label: const Text('Revert', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF3B82F6),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                      ),
+                                    OutlinedButton.icon(
+                                      onPressed: () async {
+                                        await PdfService.generateEstimatePdf({
+                                          'client': clientName,
+                                          'estimateNumber': est.estimateNumber,
+                                          'issueDate': est.issueDate.toIso8601String(),
+                                          'status': est.status,
+                                          'items': est.items.map((i) => <String, dynamic>{
+                                            'description': i.description,
+                                            'quantity': i.quantity,
+                                            'price': i.rate,
+                                            'tax': i.taxPercent,
+                                            'discount': i.discountPercent,
+                                          }).toList(),
+                                          'subtotal': est.subTotal,
+                                          'tax': est.taxTotal,
+                                          'discountPercent': est.discountPercent,
+                                          'discountAmount': est.discountAmount,
+                                          'total': est.totalAmount,
+                                        }, settings);
+                                      },
+                                      icon: const Icon(Icons.picture_as_pdf, size: 16, color: Color(0xFF8B5CF6)),
+                                      label: const Text('PDF', style: TextStyle(color: Color(0xFF8B5CF6), fontSize: 12, fontWeight: FontWeight.bold)),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        side: const BorderSide(color: Color(0xFF8B5CF6)),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                    ),
+                                    OutlinedButton.icon(
+                                      onPressed: () => context.go('/estimates/edit/${est.id}'),
+                                      icon: const Icon(Icons.edit, size: 16, color: Color(0xFF4F46E5)),
+                                      label: const Text('Edit', style: TextStyle(color: Color(0xFF4F46E5), fontSize: 12, fontWeight: FontWeight.w600)),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 20),
+                                      tooltip: 'Delete Estimate',
+                                      onPressed: () => _confirmDelete(est),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
                         ),

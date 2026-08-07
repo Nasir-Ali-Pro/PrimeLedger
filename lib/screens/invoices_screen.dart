@@ -126,136 +126,180 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                             : null,
                       )
                     : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     itemCount: filteredInvoices.length,
                     itemBuilder: (context, index) {
                       final invoice = filteredInvoices[index];
-                      return Slidable(
-                        key: ValueKey(invoice.id),
-                        endActionPane: ActionPane(
-                          motion: const ScrollMotion(),
-                          children: [
-                            if (invoice.status != 'Paid')
-                              SlidableAction(
-                                onPressed: (_) =>
-                                    context.go('/invoices/pay/${invoice.id}'),
-                                backgroundColor: const Color(0xFF10B981),
-                                foregroundColor: Colors.white,
-                                icon: Icons.payments,
-                                label: 'Pay',
-                              ),
-                            SlidableAction(
-                              onPressed: (context) async {
-                                final clients = ref.read(clientsProvider);
-                                final settings = ref.read(settingsProvider);
-                                String clientName = 'Unknown';
-                                try {
-                                  clientName = clients
-                                      .firstWhere(
-                                          (c) => c.id == invoice.clientId)
-                                      .name;
-                                } catch (e) {
-                                  debugPrint(e.toString());
-                                }
+                      final clients = ref.read(clientsProvider);
+                      final settings = ref.read(settingsProvider);
+                      
+                      String clientName = 'Unknown Client';
+                      try {
+                        clientName = clients.firstWhere((c) => c.id == invoice.clientId).name;
+                      } catch (e) {
+                        debugPrint(e.toString());
+                      }
 
-                                final clientInvoices = allInvoices.where((i) => i.clientId == invoice.clientId && i.status != 'Draft' && i.status != 'Cancelled').toList();
-                                final totalBilled = clientInvoices.fold(0.0, (s, i) => s + i.totalAmount);
-                                final totalPaid = payments.where((p) => p.clientId == invoice.clientId).fold(0.0, (s, p) => s + p.amount);
-                                final billableExpenses = expenses.where((e) {
-                                  if (e.clientId != invoice.clientId || !e.isBillable) return false;
-                                  if (e.invoiceId == null) return true;
-                                  final linkedInv = allInvoices.where((i) => i.id == e.invoiceId).firstOrNull;
-                                  return linkedInv == null || linkedInv.status == 'Draft' || linkedInv.status == 'Cancelled';
-                                }).fold(0.0, (s, e) => s + e.amount * (1 + e.markupPercent / 100));
-                                final totalClientDues = totalBilled + billableExpenses - totalPaid;
+                      final thisInvoicePayments = payments.where((p) => p.invoiceId == invoice.id).fold(0.0, (s, p) => s + p.amount);
+                      final thisInvoiceRemaining = (invoice.totalAmount - thisInvoicePayments).clamp(0.0, double.infinity);
+                      final isPayable = invoice.status != 'Cancelled' && invoice.status != 'Paid' && thisInvoiceRemaining > 0.01;
 
-                                final thisInvoicePayments = payments.where((p) => p.invoiceId == invoice.id).fold(0.0, (s, p) => s + p.amount);
-                                final thisInvoiceRemaining = (invoice.totalAmount - thisInvoicePayments).clamp(0.0, double.infinity);
-                                final previousDues = (totalClientDues - thisInvoiceRemaining).clamp(0.0, 999999999.0);
-
-                                await PdfService.generateInvoicePdf({
-                                  'client': clientName,
-                                  'invoiceNumber': invoice.invoiceNumber,
-                                  'issueDate': invoice.issueDate.toIso8601String(),
-                                  'dueDate': invoice.dueDate.toIso8601String(),
-                                  'status': invoice.status,
-                                  'items': invoice.items.map((i) =>
-                                      <String, dynamic>{
-                                        'description': i.description,
-                                        'quantity': i.quantity,
-                                        'price': i.rate,
-                                        'tax': i.taxPercent,
-                                        'discount': i.discountPercent,
-                                      }).toList(),
-                                  'subtotal': invoice.subTotal,
-                                  'tax': invoice.taxTotal,
-                                  'discountPercent': invoice.discountPercent,
-                                  'discountAmount': invoice.discountAmount,
-                                  'withholdingTaxPercent': invoice.withholdingTaxPercent,
-                                  'tax2Percent': invoice.tax2Percent,
-                                  'total': invoice.totalAmount,
-                                  'previousDues': previousDues,
-                                  'amountPaid': thisInvoicePayments,
-                                }, settings);
-                              },
-                              backgroundColor: const Color(0xFF6366F1),
-                              foregroundColor: Colors.white,
-                              icon: Icons.picture_as_pdf,
-                              label: 'PDF',
-                            ),
-                            SlidableAction(
-                              onPressed: (context) async {
-                                final confirmed = await ConfirmDialog.show(
-                                  context: context,
-                                  title: 'Delete Invoice',
-                                  message: 'Are you sure you want to delete this invoice? This will also delete all associated payments and revert inventory adjustments.',
-                                  confirmLabel: 'Delete',
-                                  icon: Icons.delete,
-                                );
-
-                                if (confirmed == true) {
-                                  ref
-                                      .read(invoicesProvider.notifier)
-                                      .deleteInvoice(invoice.id);
-                                }
-                              },
-                              backgroundColor: const Color(0xFFEF4444),
-                              foregroundColor: Colors.white,
-                              icon: Icons.delete,
-                              label: 'Delete',
-                            ),
-                          ],
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: Theme.of(context).dividerColor),
                         ),
-                        child: Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side:
-                                BorderSide(color: Theme.of(context).dividerColor),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 12),
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  const Color(0xFF6366F1).withValues(alpha: 0.1),
-                              child: const Icon(Icons.receipt_long,
-                                  color: Color(0xFF6366F1)),
+                        child: InkWell(
+                          onTap: () => context.go('/invoices/edit/${invoice.id}'),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            backgroundColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                                            child: const Icon(Icons.receipt_long, color: Color(0xFF6366F1), size: 20),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(invoice.invoiceNumber, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                                Text(clientName, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 13), overflow: TextOverflow.ellipsis),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    StatusBadge(status: invoice.status),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                const Divider(height: 1),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Total Amount', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                                        Text(settings.formatCurrency(invoice.totalAmount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      ],
+                                    ),
+                                    if (isPayable)
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          const Text('Balance Due', style: TextStyle(fontSize: 11, color: Color(0xFFEF4444))),
+                                          Text(settings.formatCurrency(thisInvoiceRemaining), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFFEF4444))),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    if (isPayable)
+                                      ElevatedButton.icon(
+                                        onPressed: () => context.go('/invoices/pay/${invoice.id}'),
+                                        icon: const Icon(Icons.payment, size: 16, color: Colors.white),
+                                        label: const Text('Pay', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF10B981),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                      ),
+                                    OutlinedButton.icon(
+                                      onPressed: () async {
+                                        final clientInvoices = allInvoices.where((i) => i.clientId == invoice.clientId && i.status != 'Draft' && i.status != 'Cancelled').toList();
+                                        final totalBilled = clientInvoices.fold(0.0, (s, i) => s + i.totalAmount);
+                                        final totalPaid = payments.where((p) => p.clientId == invoice.clientId).fold(0.0, (s, p) => s + p.amount);
+                                        final billableExpenses = expenses.where((e) {
+                                          if (e.clientId != invoice.clientId || !e.isBillable) return false;
+                                          if (e.invoiceId == null) return true;
+                                          final linkedInv = allInvoices.where((i) => i.id == e.invoiceId).firstOrNull;
+                                          return linkedInv == null || linkedInv.status == 'Draft' || linkedInv.status == 'Cancelled';
+                                        }).fold(0.0, (s, e) => s + e.amount * (1 + e.markupPercent / 100));
+                                        final totalClientDues = totalBilled + billableExpenses - totalPaid;
+                                        final previousDues = (totalClientDues - thisInvoiceRemaining).clamp(0.0, 999999999.0);
+
+                                        await PdfService.generateInvoicePdf({
+                                          'client': clientName,
+                                          'invoiceNumber': invoice.invoiceNumber,
+                                          'issueDate': invoice.issueDate.toIso8601String(),
+                                          'dueDate': invoice.dueDate.toIso8601String(),
+                                          'status': invoice.status,
+                                          'items': invoice.items.map((i) => <String, dynamic>{
+                                            'description': i.description,
+                                            'quantity': i.quantity,
+                                            'price': i.rate,
+                                            'tax': i.taxPercent,
+                                            'discount': i.discountPercent,
+                                          }).toList(),
+                                          'subtotal': invoice.subTotal,
+                                          'tax': invoice.taxTotal,
+                                          'discountPercent': invoice.discountPercent,
+                                          'discountAmount': invoice.discountAmount,
+                                          'withholdingTaxPercent': invoice.withholdingTaxPercent,
+                                          'tax2Percent': invoice.tax2Percent,
+                                          'total': invoice.totalAmount,
+                                          'previousDues': previousDues,
+                                          'amountPaid': thisInvoicePayments,
+                                        }, settings);
+                                      },
+                                      icon: const Icon(Icons.picture_as_pdf, size: 16, color: Color(0xFF6366F1)),
+                                      label: const Text('PDF', style: TextStyle(color: Color(0xFF6366F1), fontSize: 12, fontWeight: FontWeight.bold)),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        side: const BorderSide(color: Color(0xFF6366F1)),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                    ),
+                                    OutlinedButton.icon(
+                                      onPressed: () => context.go('/invoices/edit/${invoice.id}'),
+                                      icon: const Icon(Icons.edit, size: 16, color: Color(0xFF4F46E5)),
+                                      label: const Text('Edit', style: TextStyle(color: Color(0xFF4F46E5), fontSize: 12, fontWeight: FontWeight.w600)),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 20),
+                                      tooltip: 'Delete Invoice',
+                                      onPressed: () async {
+                                        final confirmed = await ConfirmDialog.show(
+                                          context: context,
+                                          title: 'Delete Invoice',
+                                          message: 'Are you sure you want to delete this invoice? This will also delete all associated payments and revert inventory adjustments.',
+                                          confirmLabel: 'Delete',
+                                          icon: Icons.delete,
+                                        );
+                                        if (confirmed == true) {
+                                          ref.read(invoicesProvider.notifier).deleteInvoice(invoice.id);
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                            title: Text(invoice.invoiceNumber,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16)),
-                            subtitle: Text(
-                                settings.formatCurrency(invoice.totalAmount),
-                                style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onSurface,
-                                    fontWeight: FontWeight.w500)),
-                            trailing: StatusBadge(status: invoice.status),
-                            onTap: () {
-                              context.go('/invoices/edit/${invoice.id}');
-                            },
                           ),
                         ),
                       );
