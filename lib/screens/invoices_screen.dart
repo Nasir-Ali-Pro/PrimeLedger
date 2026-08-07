@@ -51,7 +51,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
       return matchesSearch && matchesStatus;
     }).toList();
 
-    const statusOptions = ['All', 'Draft', 'Sent', 'Unpaid', 'Paid', 'Partially Paid', 'Overdue', 'Cancelled'];
+    const statusOptions = ['All', 'Unpaid', 'Partially Paid', 'Paid', 'Overdue', 'Draft', 'Cancelled'];
 
     return Scaffold(
       appBar: AppBar(title: const Text('Invoices')),

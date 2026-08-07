@@ -66,7 +66,7 @@ class PaymentDao {
         newStatus = invoiceRow.status;
       } else {
         final isOverdue = DateTime.now().isAfter(invoiceRow.dueDate);
-        newStatus = isOverdue ? 'Overdue' : 'Sent';
+        newStatus = isOverdue ? 'Overdue' : 'Unpaid';
       }
     }
 

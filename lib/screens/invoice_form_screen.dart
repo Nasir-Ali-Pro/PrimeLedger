@@ -599,7 +599,7 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
                     child: DropdownButtonFormField<String>(
                       value: _status,
                       isExpanded: true,
-                      items: ['Draft', 'Sent', 'Unpaid', 'Paid', 'Partially Paid', 'Overdue', 'Cancelled'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                      items: ['Unpaid', 'Partially Paid', 'Paid', 'Overdue', 'Draft', 'Cancelled'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                       onChanged: (v) => setState(() => _status = v!),
                       decoration: const InputDecoration(
                         labelText: 'Status',
