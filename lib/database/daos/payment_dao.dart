@@ -70,6 +70,37 @@ class PaymentDao {
       }
     }
 
+    final wasDeducting = invoiceRow.status != 'Draft' && invoiceRow.status != 'Cancelled';
+    final isNowDeducting = newStatus != 'Draft' && newStatus != 'Cancelled';
+
+    if (!wasDeducting && isNowDeducting) {
+      final items = await (_db.select(_db.invoiceItemsTbl)..where((t) => t.invoiceId.equals(invoiceId))).get();
+      for (final item in items) {
+        final pid = item.productId;
+        if (pid != null) {
+          final productRow = await (_db.select(_db.productsTbl)..where((t) => t.id.equals(pid))).getSingleOrNull();
+          if (productRow != null) {
+            final newQty = (productRow.quantity - item.quantity).clamp(0, 999999);
+            await (_db.update(_db.productsTbl)..where((t) => t.id.equals(pid))).write(
+              ProductsTblCompanion(quantity: Value(newQty), updatedAt: Value(DateTime.now())),
+            );
+            await _db.into(_db.stockMovementsTbl).insert(StockMovementsTblCompanion(
+              id: Value(const Uuid().v4()),
+              productId: Value(pid),
+              productName: Value(productRow.name),
+              quantityChange: Value(-item.quantity),
+              balanceAfter: Value(newQty),
+              type: Value('Sale'),
+              referenceNumber: Value(invoiceRow.invoiceNumber),
+              referenceId: Value(invoiceRow.id),
+              description: Value('Stock deducted on $newStatus status transition'),
+              createdAt: Value(DateTime.now()),
+            ));
+          }
+        }
+      }
+    }
+
     await (_db.update(_db.invoicesTbl)
       ..where((t) => t.id.equals(invoiceId))
     ).write(InvoicesTblCompanion(

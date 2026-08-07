@@ -188,7 +188,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with WidgetsB
             ),
             const SizedBox(height: 24),
             // Chart
-            _buildChartSection(theme, invoices, settings),
+            _buildChartSection(theme, invoices, settings, payments),
             const SizedBox(height: 24),
             // Recent Invoices
             _buildRecentActivity(context, invoices, settings, theme),
@@ -219,23 +219,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with WidgetsB
     );
   }
 
-  Widget _buildChartSection(ThemeData theme, List<Invoice> invoices, AppSettings settings) {
+  Widget _buildChartSection(ThemeData theme, List<Invoice> invoices, AppSettings settings, List<dynamic> payments) {
     final now = DateTime.now();
     final List<double> dailyRevenue = List.filled(7, 0.0);
     final List<String> days = [];
     
+    final validInvoiceIds = invoices.where((i) => i.status != 'Draft' && i.status != 'Cancelled').map((i) => i.id).toSet();
+
     for (int i = 6; i >= 0; i--) {
       final date = now.subtract(Duration(days: i));
       days.add(const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday - 1]);
       
+      final dailyPayments = payments.where((p) => 
+        validInvoiceIds.contains(p.invoiceId) &&
+        p.date.year == date.year && 
+        p.date.month == date.month && 
+        p.date.day == date.day
+      );
+      final paymentSum = dailyPayments.fold(0.0, (sum, p) => sum + p.amount);
+
       final dailyInvoices = invoices.where((inv) => 
-        inv.status == 'Paid' && 
+        (inv.status != 'Draft' && inv.status != 'Cancelled') && 
         inv.issueDate.year == date.year && 
         inv.issueDate.month == date.month && 
         inv.issueDate.day == date.day
       );
-      
-      dailyRevenue[6 - i] = dailyInvoices.fold(0.0, (sum, inv) => sum + (inv.totalAmount - inv.taxTotal));
+      final invoiceSum = dailyInvoices.fold(0.0, (sum, inv) => sum + (inv.totalAmount - inv.taxTotal));
+
+      dailyRevenue[6 - i] = paymentSum > 0 ? paymentSum : invoiceSum;
     }
 
     double maxY = dailyRevenue.reduce((a, b) => a > b ? a : b);
