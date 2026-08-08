@@ -313,6 +313,7 @@ class PurchaseOrderDao {
               await (_db.update(_db.productsTbl)..where((t) => t.id.equals(productId!))).write(
                 ProductsTblCompanion(
                   quantity: Value(updatedQty),
+                  costPrice: item.unitPrice > 0 ? Value(item.unitPrice) : const Value.absent(),
                   updatedAt: Value(DateTime.now()),
                 ),
               );
