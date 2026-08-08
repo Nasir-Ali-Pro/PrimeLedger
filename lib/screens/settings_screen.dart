@@ -244,16 +244,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode, color: const Color(0xFF6366F1)),
-                        title: const Text('Dark Mode', style: TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text(themeMode == ThemeMode.dark ? 'Dark theme active' : 'Light theme active'),
-                        trailing: Switch(
-                          value: themeMode == ThemeMode.dark,
-                          activeThumbColor: const Color(0xFF6366F1),
-                          onChanged: (_) => ref.read(themeModeProvider.notifier).toggleTheme(),
-                        ),
+                      Builder(
+                        builder: (ctx) {
+                          final isDark = Theme.of(ctx).brightness == Brightness.dark || themeMode == ThemeMode.dark;
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(isDark ? Icons.dark_mode : Icons.light_mode, color: const Color(0xFF6366F1)),
+                            title: const Text('Dark Mode', style: TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text(isDark ? 'Dark theme active' : 'Light theme active'),
+                            trailing: Switch(
+                              value: isDark,
+                              activeThumbColor: const Color(0xFF6366F1),
+                              onChanged: (val) {
+                                ref.read(themeModeProvider.notifier).setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
+                              },
+                            ),
+                          );
+                        },
                       ),
                       const Divider(),
                       ListTile(

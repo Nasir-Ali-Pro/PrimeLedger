@@ -6,7 +6,7 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
   @override
   ThemeMode build() {
     _load();
-    return ThemeMode.system;
+    return ThemeMode.dark;
   }
 
   Future<void> _load() async {
@@ -19,7 +19,7 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
         case 'dark':
           state = ThemeMode.dark;
         default:
-          state = ThemeMode.system;
+          state = ThemeMode.dark;
       }
     } catch (e) {
       debugPrint('Error loading theme: $e');
