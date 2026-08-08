@@ -187,8 +187,8 @@ class _PurchaseOrdersScreenState extends ConsumerState<PurchaseOrdersScreen> {
                                 const SizedBox(height: 12),
                                 const Divider(height: 1),
                                 const SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       'Paid: ${settings.formatCurrency(totalPaid)} / ${settings.formatCurrency(po.totalAmount)}',
@@ -202,11 +202,13 @@ class _PurchaseOrdersScreenState extends ConsumerState<PurchaseOrdersScreen> {
                                                 : Colors.grey,
                                       ),
                                     ),
-                                    if (remaining > 0.01)
+                                    if (remaining > 0.01) ...[
+                                      const SizedBox(height: 4),
                                       Text(
                                         'Owed: ${settings.formatCurrency(remaining)}',
                                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFEF4444)),
                                       ),
+                                    ],
                                   ],
                                 ),
                                 const SizedBox(height: 14),
