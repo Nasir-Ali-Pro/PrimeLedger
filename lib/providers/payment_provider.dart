@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/payment.dart';
 import '../database/database_provider.dart';
 import 'invoice_provider.dart';
+import 'product_provider.dart';
 
 final paymentsProvider = NotifierProvider<PaymentsNotifier, List<Payment>>(() {
   return PaymentsNotifier();
@@ -32,6 +33,7 @@ class PaymentsNotifier extends Notifier<List<Payment>> {
     try {
       await ref.read(paymentDaoProvider).insert(payment);
       await ref.read(invoicesProvider.notifier).refresh();
+      await ref.read(productsProvider.notifier).refresh();
       await _load();
     } catch (e) {
       debugPrint('Error adding payment: $e');
@@ -43,6 +45,7 @@ class PaymentsNotifier extends Notifier<List<Payment>> {
     try {
       await ref.read(paymentDaoProvider).update(payment);
       await ref.read(invoicesProvider.notifier).refresh();
+      await ref.read(productsProvider.notifier).refresh();
       await _load();
     } catch (e) {
       debugPrint('Error updating payment: $e');
@@ -54,6 +57,7 @@ class PaymentsNotifier extends Notifier<List<Payment>> {
     try {
       await ref.read(paymentDaoProvider).delete(id);
       await ref.read(invoicesProvider.notifier).refresh();
+      await ref.read(productsProvider.notifier).refresh();
       await _load();
     } catch (e) {
       debugPrint('Error deleting payment: $e');
