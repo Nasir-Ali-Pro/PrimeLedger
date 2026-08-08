@@ -56,16 +56,108 @@ class PurchaseOrderDao {
 
   Future<void> insert(PurchaseOrder order) async {
     try {
+      final settings = await SettingsDao(_db).getSettings();
+      final markup = 1.0 + (settings.productMarkupPercent / 100.0);
+
       await _db.transaction(() async {
         await _db.into(_db.purchaseOrdersTbl).insert(_toCompanion(order));
         for (final item in order.items) {
+          String? productId = item.productId;
+          int receivedQty = 0;
+
+          if (order.status == 'Received') {
+            receivedQty = item.quantity;
+            if (productId == null) {
+              final existingProduct = await (_db.select(_db.productsTbl)
+                ..where((t) => t.name.lower().equals(item.description.trim().toLowerCase()))
+              ).getSingleOrNull();
+
+              if (existingProduct != null) {
+                productId = existingProduct.id;
+                final updatedQty = existingProduct.quantity + item.quantity;
+                await (_db.update(_db.productsTbl)..where((t) => t.id.equals(productId!))).write(
+                  ProductsTblCompanion(
+                    quantity: Value(updatedQty),
+                    updatedAt: Value(DateTime.now()),
+                  ),
+                );
+                await _db.into(_db.stockMovementsTbl).insert(StockMovementsTblCompanion(
+                  id: Value(const Uuid().v4()),
+                  productId: Value(productId),
+                  productName: Value(existingProduct.name),
+                  quantityChange: Value(item.quantity),
+                  balanceAfter: Value(updatedQty),
+                  type: const Value('Purchase'),
+                  referenceNumber: Value(order.poNumber),
+                  referenceId: Value(order.id),
+                  description: Value('PO insert (matched existing product): ${item.description}'),
+                  createdAt: Value(DateTime.now()),
+                ));
+              } else {
+                final newId = const Uuid().v4();
+                await _db.into(_db.productsTbl).insert(ProductsTblCompanion(
+                  id: Value(newId),
+                  name: Value(item.description.isNotEmpty ? item.description : 'PO Item'),
+                  sku: Value(null),
+                  barcode: Value(null),
+                  description: Value(null),
+                  category: Value('Purchased'),
+                  costPrice: Value(item.unitPrice),
+                  sellingPrice: Value(item.unitPrice > 0 ? item.unitPrice * markup : item.unitPrice),
+                  quantity: Value(item.quantity),
+                  reorderLevel: const Value(5),
+                  unit: const Value('pcs'),
+                  createdAt: Value(DateTime.now()),
+                  updatedAt: Value(DateTime.now()),
+                ));
+                await _db.into(_db.stockMovementsTbl).insert(StockMovementsTblCompanion(
+                  id: Value(const Uuid().v4()),
+                  productId: Value(newId),
+                  productName: Value(item.description.isNotEmpty ? item.description : 'PO Item'),
+                  quantityChange: Value(item.quantity),
+                  balanceAfter: Value(item.quantity),
+                  type: const Value('Purchase'),
+                  referenceNumber: Value(order.poNumber),
+                  referenceId: Value(order.id),
+                  description: const Value('New product from PO insert receipt'),
+                  createdAt: Value(DateTime.now()),
+                ));
+                productId = newId;
+              }
+            } else {
+              final product = await (_db.select(_db.productsTbl)..where((t) => t.id.equals(productId!))).getSingleOrNull();
+              if (product != null) {
+                final updatedQty = product.quantity + item.quantity;
+                await (_db.update(_db.productsTbl)..where((t) => t.id.equals(productId!))).write(
+                  ProductsTblCompanion(
+                    quantity: Value(updatedQty),
+                    costPrice: item.unitPrice > 0 ? Value(item.unitPrice) : const Value.absent(),
+                    updatedAt: Value(DateTime.now()),
+                  ),
+                );
+                await _db.into(_db.stockMovementsTbl).insert(StockMovementsTblCompanion(
+                  id: Value(const Uuid().v4()),
+                  productId: Value(productId),
+                  productName: Value(product.name),
+                  quantityChange: Value(item.quantity),
+                  balanceAfter: Value(updatedQty),
+                  type: const Value('Purchase'),
+                  referenceNumber: Value(order.poNumber),
+                  referenceId: Value(order.id),
+                  description: Value('PO insert: ${item.description}'),
+                  createdAt: Value(DateTime.now()),
+                ));
+              }
+            }
+          }
+
           await _db.into(_db.poItemsTbl).insert(PoItemsTblCompanion(
             id: Value(const Uuid().v4()),
             purchaseOrderId: Value(order.id),
-            productId: Value(item.productId),
+            productId: Value(productId),
             description: Value(item.description),
             quantity: Value(item.quantity),
-            receivedQty: Value(item.receivedQuantity),
+            receivedQty: Value(receivedQty),
             unitPrice: Value(item.unitPrice),
             taxPercent: Value(item.taxPercent),
             taxAmount: Value(item.taxAmount),
@@ -92,11 +184,12 @@ class PurchaseOrderDao {
         // 2. Revert stock of old items if previously received
         if (wasReceived) {
           for (final oldItem in oldOrder.items) {
-            if (oldItem.productId != null) {
+            final oldQtyToRevert = oldItem.receivedQuantity > 0 ? oldItem.receivedQuantity : oldItem.quantity;
+            if (oldItem.productId != null && oldQtyToRevert > 0) {
               final product = await (_db.select(_db.productsTbl)..where((t) => t.id.equals(oldItem.productId!))).getSingleOrNull();
               if (product != null) {
-                final newQty = (product.quantity - oldItem.receivedQuantity).clamp(0, 999999);
-                final delta = -oldItem.receivedQuantity;
+                final newQty = (product.quantity - oldQtyToRevert).clamp(0, 999999);
+                final delta = -oldQtyToRevert;
                 await (_db.update(_db.productsTbl)..where((t) => t.id.equals(oldItem.productId!))).write(
                   ProductsTblCompanion(
                     quantity: Value(newQty),

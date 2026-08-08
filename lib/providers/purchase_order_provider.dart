@@ -42,6 +42,7 @@ class PurchaseOrdersNotifier extends Notifier<List<PurchaseOrder>> {
     try {
       await ref.read(purchaseOrderDaoProvider).insert(order);
       await _load();
+      await ref.read(productsProvider.notifier).refresh();
     } catch (e) {
       debugPrint('Error adding purchase order: $e');
       rethrow;
@@ -52,6 +53,7 @@ class PurchaseOrdersNotifier extends Notifier<List<PurchaseOrder>> {
     try {
       await ref.read(purchaseOrderDaoProvider).update(order);
       await _load();
+      await ref.read(productsProvider.notifier).refresh();
     } catch (e) {
       debugPrint('Error updating purchase order: $e');
       rethrow;
