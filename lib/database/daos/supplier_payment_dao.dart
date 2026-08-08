@@ -10,7 +10,12 @@ class SupplierPaymentDao {
 
   Future<List<SupplierPayment>> getAll() async {
     try {
-      final rows = await _db.select(_db.supplierPaymentsTbl).get();
+      final rows = await (_db.select(_db.supplierPaymentsTbl)
+        ..orderBy([
+          (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+          (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+        ])
+      ).get();
       return rows.map(_toModel).toList();
     } catch (e) {
       debugPrint('SupplierPaymentDao.getAll error: $e');

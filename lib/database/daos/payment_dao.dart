@@ -11,7 +11,12 @@ class PaymentDao {
 
   Future<List<Payment>> getAll() async {
     try {
-      final rows = await _db.select(_db.paymentsTbl).get();
+      final rows = await (_db.select(_db.paymentsTbl)
+        ..orderBy([
+          (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+          (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+        ])
+      ).get();
       return rows.map(_toModel).toList();
     } catch (e) {
       debugPrint('PaymentDao.getAll error: $e');
@@ -31,7 +36,13 @@ class PaymentDao {
 
   Future<List<Payment>> getByInvoiceId(String invoiceId) async {
     try {
-      final rows = await (_db.select(_db.paymentsTbl)..where((t) => t.invoiceId.equals(invoiceId))).get();
+      final rows = await (_db.select(_db.paymentsTbl)
+        ..where((t) => t.invoiceId.equals(invoiceId))
+        ..orderBy([
+          (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+          (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+        ])
+      ).get();
       return rows.map(_toModel).toList();
     } catch (e) {
       debugPrint('PaymentDao.getByInvoiceId error: $e');

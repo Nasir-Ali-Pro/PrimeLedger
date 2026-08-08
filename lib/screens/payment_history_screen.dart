@@ -133,7 +133,12 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> wit
               p.date.isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
 
       return matchesSearch && matchesMethod && matchesDate;
-    }).toList();
+    }).toList()
+      ..sort((a, b) {
+        final dateCmp = b.date.compareTo(a.date);
+        if (dateCmp != 0) return dateCmp;
+        return b.createdAt.compareTo(a.createdAt);
+      });
 
     // Filter Supplier Payments
     final filteredSupplierPayments = supplierPayments.where((p) {
@@ -151,7 +156,12 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> wit
               p.date.isBefore(_supplierSelectedDateRange!.end.add(const Duration(days: 1))));
 
       return matchesSearch && matchesMethod && matchesDate;
-    }).toList();
+    }).toList()
+      ..sort((a, b) {
+        final dateCmp = b.date.compareTo(a.date);
+        if (dateCmp != 0) return dateCmp;
+        return b.createdAt.compareTo(a.createdAt);
+      });
 
     // Client Stats
     final totalReceived = filteredPayments.fold(0.0, (sum, p) => sum + p.amount);
