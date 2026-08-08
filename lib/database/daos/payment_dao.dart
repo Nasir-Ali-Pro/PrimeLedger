@@ -192,7 +192,7 @@ class PaymentDao {
           if (remainingTarget > 0.01) {
             await _db.into(_db.paymentsTbl).insert(_toCompanion(payment.copyWith(
               amount: remainingTarget,
-              notes: payment.notes != null ? '${payment.notes} (Partial allocation)' : 'Partial allocation of Rs $remainingTarget',
+              notes: payment.notes != null ? '${payment.notes} (Partial allocation)' : 'Partial allocation: $remainingTarget',
             )));
             await _syncInvoiceStatus(payment.invoiceId);
           }
@@ -241,7 +241,7 @@ class PaymentDao {
                 date: payment.date,
                 paymentMethod: payment.paymentMethod,
                 referenceNumber: payment.referenceNumber,
-                notes: payment.notes != null ? '${payment.notes} (Overpayment allocation)' : 'Overpayment allocation of Rs $overpaymentAmt',
+                notes: payment.notes != null ? '${payment.notes} (Overpayment allocation)' : 'Overpayment allocation: $overpaymentAmt',
                 createdAt: DateTime.now(),
               );
               await _db.into(_db.paymentsTbl).insert(_toCompanion(overpaymentPmt));

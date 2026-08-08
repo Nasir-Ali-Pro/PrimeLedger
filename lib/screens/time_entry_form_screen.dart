@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../models/time_entry.dart';
 import '../providers/time_entry_provider.dart';
 import '../providers/client_provider.dart';
+import '../providers/settings_provider.dart';
 import '../widgets/loading_overlay.dart';
 
 class TimeEntryFormScreen extends ConsumerStatefulWidget {
@@ -61,6 +62,7 @@ class _TimeEntryFormScreenState extends ConsumerState<TimeEntryFormScreen> {
   @override
   Widget build(BuildContext context) {
     final clients = ref.watch(clientsProvider);
+    final settings = ref.watch(settingsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -97,23 +99,23 @@ class _TimeEntryFormScreenState extends ConsumerState<TimeEntryFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              TextFormField(
+                controller: _taskCtrl,
+                decoration: const InputDecoration(labelText: 'Task Name', prefixIcon: Icon(Icons.task)),
+                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 16),
               DropdownButtonFormField<String>(isExpanded: true, 
                 value: _clientId,
                 decoration: const InputDecoration(labelText: 'Client', prefixIcon: Icon(Icons.person)),
                 items: clients.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
                 onChanged: (v) => setState(() => _clientId = v),
-                validator: (v) => v == null ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _taskCtrl,
-                decoration: const InputDecoration(labelText: 'Task Name', prefixIcon: Icon(Icons.work)),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               LayoutBuilder(
                 builder: (context, constraints) {
-                  if (constraints.maxWidth < 400) {
+                  final isMobile = constraints.maxWidth < 600;
+                  if (isMobile) {
                     return Column(
                       children: [
                         TextFormField(
@@ -126,7 +128,7 @@ class _TimeEntryFormScreenState extends ConsumerState<TimeEntryFormScreen> {
                         TextFormField(
                           controller: _rateCtrl,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Hourly Rate', prefixIcon: Icon(Icons.attach_money)),
+                          decoration: InputDecoration(labelText: 'Hourly Rate', prefixText: settings.currencySymbol, prefixIcon: const Icon(Icons.attach_money)),
                           validator: (v) { if (v!.isEmpty) return 'Required'; final r = double.tryParse(v); if (r == null || r <= 0) return 'Must be > 0'; return null; },
                         ),
                       ],
@@ -147,7 +149,7 @@ class _TimeEntryFormScreenState extends ConsumerState<TimeEntryFormScreen> {
                         child: TextFormField(
                           controller: _rateCtrl,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Hourly Rate', prefixIcon: Icon(Icons.attach_money)),
+                          decoration: InputDecoration(labelText: 'Hourly Rate', prefixText: settings.currencySymbol, prefixIcon: const Icon(Icons.attach_money)),
                           validator: (v) { if (v!.isEmpty) return 'Required'; final r = double.tryParse(v); if (r == null || r <= 0) return 'Must be > 0'; return null; },
                         ),
                       ),

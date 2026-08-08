@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../models/recurring_profile.dart';
 import '../providers/recurring_profile_provider.dart';
 import '../providers/client_provider.dart';
+import '../providers/settings_provider.dart';
 import '../widgets/loading_overlay.dart';
 import '../utils/error_handler.dart';
 
@@ -58,6 +59,7 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
   @override
   Widget build(BuildContext context) {
     final clients = ref.watch(clientsProvider);
+    final settings = ref.watch(settingsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -106,7 +108,8 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
               const SizedBox(height: 16),
               LayoutBuilder(
                 builder: (context, constraints) {
-                  if (constraints.maxWidth < 400) {
+                  final isMobile = constraints.maxWidth < 600;
+                  if (isMobile) {
                     return Column(
                       children: [
                         DropdownButtonFormField<String>(isExpanded: true, 
@@ -119,7 +122,7 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
                         TextFormField(
                           controller: _amountCtrl,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Amount per Cycle', prefixIcon: Icon(Icons.attach_money)),
+                          decoration: InputDecoration(labelText: 'Amount per Cycle', prefixText: settings.currencySymbol, prefixIcon: const Icon(Icons.attach_money)),
                           validator: (v) => v!.isEmpty ? 'Required' : null,
                         ),
                       ],
@@ -140,7 +143,7 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
                         child: TextFormField(
                           controller: _amountCtrl,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Amount per Cycle', prefixIcon: Icon(Icons.attach_money)),
+                          decoration: InputDecoration(labelText: 'Amount per Cycle', prefixText: settings.currencySymbol, prefixIcon: const Icon(Icons.attach_money)),
                           validator: (v) => v!.isEmpty ? 'Required' : null,
                         ),
                       ),

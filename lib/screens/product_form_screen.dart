@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../models/product.dart';
 import '../providers/product_provider.dart';
+import '../providers/settings_provider.dart';
 import '../widgets/loading_overlay.dart';
 import '../utils/error_handler.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
@@ -67,6 +68,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.id != null;
+    final settings = ref.watch(settingsProvider);
     final cost = double.tryParse(_costCtrl.text) ?? 0;
     final sell = double.tryParse(_sellCtrl.text) ?? 0;
     final margin = cost > 0 ? ((sell - cost) / cost * 100) : 0;
@@ -109,7 +111,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                   delayMillis: 2000,
                                   cameraFace: CameraFace.back,
                                 );
-                                if (res is String && res != '-1') setState(() => _barcodeCtrl.text = res);
+                                if (res != null && res != '-1' && res.isNotEmpty) {
+                                  setState(() => _barcodeCtrl.text = res);
+                                }
                               },
                             ),
                           ),
@@ -140,7 +144,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                  delayMillis: 2000,
                                  cameraFace: CameraFace.back,
                                );
-                               if (res is String && res != '-1') setState(() => _barcodeCtrl.text = res);
+                               if (res != null && res != '-1' && res.isNotEmpty) {
+                                 setState(() => _barcodeCtrl.text = res);
+                               }
                              },
                           ),
                         ),
@@ -178,16 +184,16 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   if (isMobile) {
                     return Column(
                       children: [
-                        TextFormField(controller: _costCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Cost Price', prefixIcon: Icon(Icons.money_off)), onChanged: (_) => setState(() {}), validator: (v) { if (v!.isEmpty) return 'Required'; if (double.tryParse(v) == null || double.parse(v) < 0) return 'Enter a valid price'; return null; }),
+                        TextFormField(controller: _costCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Cost Price', prefixText: settings.currencySymbol, prefixIcon: const Icon(Icons.money_off)), onChanged: (_) => setState(() {}), validator: (v) { if (v!.isEmpty) return 'Required'; if (double.tryParse(v) == null || double.parse(v) < 0) return 'Enter a valid price'; return null; }),
                         const SizedBox(height: 16),
-                        TextFormField(controller: _sellCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Sell Price', prefixIcon: Icon(Icons.attach_money)), onChanged: (_) => setState(() {}), validator: (v) { if (v!.isEmpty) return 'Required'; if (double.tryParse(v) == null || double.parse(v) < 0) return 'Enter a valid price'; return null; }),
+                        TextFormField(controller: _sellCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Sell Price', prefixText: settings.currencySymbol, prefixIcon: const Icon(Icons.attach_money)), onChanged: (_) => setState(() {}), validator: (v) { if (v!.isEmpty) return 'Required'; if (double.tryParse(v) == null || double.parse(v) < 0) return 'Enter a valid price'; return null; }),
                       ],
                     );
                   }
                   return Row(children: [
-                    Expanded(child: TextFormField(controller: _costCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Cost Price', prefixIcon: Icon(Icons.money_off)), onChanged: (_) => setState(() {}), validator: (v) { if (v!.isEmpty) return 'Required'; if (double.tryParse(v) == null || double.parse(v) < 0) return 'Enter a valid price'; return null; })),
+                    Expanded(child: TextFormField(controller: _costCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Cost Price', prefixText: settings.currencySymbol, prefixIcon: const Icon(Icons.money_off)), onChanged: (_) => setState(() {}), validator: (v) { if (v!.isEmpty) return 'Required'; if (double.tryParse(v) == null || double.parse(v) < 0) return 'Enter a valid price'; return null; })),
                     const SizedBox(width: 16),
-                    Expanded(child: TextFormField(controller: _sellCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Sell Price', prefixIcon: Icon(Icons.attach_money)), onChanged: (_) => setState(() {}), validator: (v) { if (v!.isEmpty) return 'Required'; if (double.tryParse(v) == null || double.parse(v) < 0) return 'Enter a valid price'; return null; })),
+                    Expanded(child: TextFormField(controller: _sellCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Sell Price', prefixText: settings.currencySymbol, prefixIcon: const Icon(Icons.attach_money)), onChanged: (_) => setState(() {}), validator: (v) { if (v!.isEmpty) return 'Required'; if (double.tryParse(v) == null || double.parse(v) < 0) return 'Enter a valid price'; return null; })),
                   ]);
                 }
               ),
