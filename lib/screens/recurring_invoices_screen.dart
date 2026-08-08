@@ -68,16 +68,29 @@ class _RecurringInvoicesScreenState extends ConsumerState<RecurringInvoicesScree
               itemBuilder: (context, index) {
                 final profile = profiles[index];
                 final client = clientMap[profile.clientId] ?? Client.empty();
+                final dateFormat = DateFormat('dd MMM yyyy');
+                final startStr = dateFormat.format(profile.startDate);
+                final endStr = profile.endDate != null ? dateFormat.format(profile.endDate!) : 'Ongoing';
+                final nextStr = dateFormat.format(profile.nextIssueDate);
 
                 return Card(
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     leading: CircleAvatar(
                       backgroundColor: profile.isActive ? const Color(0xFF10B981) : Colors.grey,
                       child: const Icon(Icons.autorenew, color: Colors.white),
                     ),
-                    title: Text('${client.name} • ${settings.formatCurrency(profile.amount)}'),
-                    subtitle: Text('${profile.frequency} • Next: ${DateFormat.yMd().format(profile.nextIssueDate)}'),
+                    title: Text('${client.name} • ${settings.formatCurrency(profile.amount)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text('${profile.frequency} • Next: $nextStr', style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF6366F1))),
+                        const SizedBox(height: 2),
+                        Text('Range: $startStr – $endStr', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
+                      ],
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -120,15 +133,7 @@ class _RecurringInvoicesScreenState extends ConsumerState<RecurringInvoicesScree
                         Switch(
                           value: profile.isActive,
                           onChanged: (v) async {
-                            final updated = RecurringProfile(
-                              id: profile.id,
-                              clientId: profile.clientId,
-                              frequency: profile.frequency,
-                              nextIssueDate: profile.nextIssueDate,
-                              amount: profile.amount,
-                              description: profile.description,
-                              isActive: v,
-                            );
+                            final updated = profile.copyWith(isActive: v);
                             LoadingOverlay.show(context, message: v ? 'Activating...' : 'Deactivating...');
                             try {
                               await ref.read(recurringProfilesProvider.notifier).updateProfile(updated);

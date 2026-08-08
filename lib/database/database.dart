@@ -229,6 +229,8 @@ class RecurringProfilesTbl extends Table {
   TextColumn get id => text()();
   TextColumn get clientId => text().references(ClientsTbl, #id, onDelete: KeyAction.cascade)();
   TextColumn get frequency => text()();
+  DateTimeColumn get startDate => dateTime().nullable()();
+  DateTimeColumn get endDate => dateTime().nullable()();
   DateTimeColumn get nextIssueDate => dateTime()();
   RealColumn get amount => real()();
   TextColumn get description => text()();
@@ -305,7 +307,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -363,6 +365,10 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(clientsTbl, clientsTbl.taxNumber);
           await m.addColumn(clientsTbl, clientsTbl.paymentTermsDays);
           await m.addColumn(clientsTbl, clientsTbl.creditLimit);
+        }
+        if (from < 8) {
+          await customStatement('ALTER TABLE recurring_profiles_tbl ADD COLUMN start_date INTEGER;');
+          await customStatement('ALTER TABLE recurring_profiles_tbl ADD COLUMN end_date INTEGER;');
         }
       },
     );

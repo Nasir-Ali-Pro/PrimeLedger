@@ -74,10 +74,13 @@ class RecurringProfileDao {
       id: row.id,
       clientId: row.clientId,
       frequency: row.frequency,
+      startDate: row.startDate ?? row.nextIssueDate,
+      endDate: row.endDate,
       nextIssueDate: row.nextIssueDate,
       amount: row.amount,
       description: row.description,
       isActive: row.isActive,
+      createdAt: row.createdAt,
     );
   }
 
@@ -86,11 +89,13 @@ class RecurringProfileDao {
       id: Value(model.id),
       clientId: Value(model.clientId),
       frequency: Value(model.frequency),
+      startDate: Value(model.startDate),
+      endDate: Value(model.endDate),
       nextIssueDate: Value(model.nextIssueDate),
       amount: Value(model.amount),
       description: Value(model.description),
       isActive: Value(model.isActive),
-      createdAt: Value(DateTime.now()),
+      createdAt: Value(model.createdAt),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 import '../models/recurring_profile.dart';
 import '../providers/recurring_profile_provider.dart';
 import '../providers/client_provider.dart';
@@ -23,9 +24,13 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
   String _frequency = 'Monthly';
   final _amountCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
+  DateTime _startDate = DateTime.now();
+  DateTime? _endDate;
   DateTime _nextDate = DateTime.now();
 
-  final List<String> _frequencies = ['Weekly', 'Monthly', 'Yearly'];
+  final List<String> _frequencies = ['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'];
+
+  final _dateFormatter = DateFormat('dd MMMM yyyy');
 
   @override
   void initState() {
@@ -40,6 +45,8 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
             _frequency = profile.frequency;
             _amountCtrl.text = profile.amount.toString();
             _descCtrl.text = profile.description;
+            _startDate = profile.startDate;
+            _endDate = profile.endDate;
             _nextDate = profile.nextIssueDate;
           });
         } catch (e) {
@@ -158,20 +165,100 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
                 decoration: const InputDecoration(labelText: 'Line Item Description', prefixIcon: Icon(Icons.notes)),
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
-              const SizedBox(height: 16),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.calendar_today, color: Color(0xFF6366F1)),
-                title: Text('Start / Next Date: ${_nextDate.day}/${_nextDate.month}/${_nextDate.year}'),
-                trailing: TextButton(
-                  onPressed: () async {
-                    final picked = await showDatePicker(context: context, initialDate: _nextDate, firstDate: DateTime.now().subtract(const Duration(days: 365)), lastDate: DateTime.now().add(const Duration(days: 365 * 5)));
-                    if (picked != null) setState(() => _nextDate = picked);
-                  },
-                  child: const Text('Change'),
+              const SizedBox(height: 20),
+              const Text('Schedule & Range', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+
+              // Start Date Picker Tile
+              Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Theme.of(context).dividerColor)),
+                child: ListTile(
+                  leading: const Icon(Icons.play_arrow, color: Color(0xFF10B981)),
+                  title: const Text('Start Date', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  subtitle: Text(_dateFormatter.format(_startDate), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                  trailing: TextButton(
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _startDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          _startDate = picked;
+                          if (widget.id == null) {
+                            _nextDate = picked;
+                          }
+                        });
+                      }
+                    },
+                    child: const Text('Change'),
+                  ),
                 ),
               ),
-              const SizedBox(height: 32),
+
+              // End Date Picker Tile (Optional)
+              Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Theme.of(context).dividerColor)),
+                child: ListTile(
+                  leading: const Icon(Icons.stop, color: Color(0xFFEF4444)),
+                  title: const Text('End Date (Optional)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  subtitle: Text(_endDate != null ? _dateFormatter.format(_endDate!) : 'Ongoing (No End Date)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _endDate != null ? Theme.of(context).colorScheme.onSurface : Colors.grey)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_endDate != null)
+                        IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.grey, size: 18),
+                          tooltip: 'Remove End Date',
+                          onPressed: () => setState(() => _endDate = null),
+                        ),
+                      TextButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _endDate ?? _startDate.add(const Duration(days: 365)),
+                            firstDate: _startDate,
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setState(() => _endDate = picked);
+                          }
+                        },
+                        child: Text(_endDate != null ? 'Change' : 'Set Date'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Next Issue Date Tile
+              Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Theme.of(context).dividerColor)),
+                child: ListTile(
+                  leading: const Icon(Icons.event, color: Color(0xFF6366F1)),
+                  title: const Text('Next Invoice Issue Date', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  subtitle: Text(_dateFormatter.format(_nextDate), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
+                  trailing: TextButton(
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _nextDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) setState(() => _nextDate = picked);
+                    },
+                    child: const Text('Change'),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
               SizedBox(
                 height: 56,
                 child: ElevatedButton(
@@ -188,10 +275,19 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
 
   void _save() async {
     if (_formKey.currentState!.validate()) {
+      if (_endDate != null && _endDate!.isBefore(_startDate)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('End Date cannot be before Start Date'), backgroundColor: Color(0xFFEF4444)),
+        );
+        return;
+      }
+
       final profile = RecurringProfile(
         id: widget.id ?? const Uuid().v4(),
         clientId: _clientId!,
         frequency: _frequency,
+        startDate: _startDate,
+        endDate: _endDate,
         nextIssueDate: _nextDate,
         amount: double.tryParse(_amountCtrl.text) ?? 0,
         description: _descCtrl.text,

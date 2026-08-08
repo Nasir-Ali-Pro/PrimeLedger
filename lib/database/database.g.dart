@@ -8270,6 +8270,28 @@ class $RecurringProfilesTblTable extends RecurringProfilesTbl
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _endDateMeta = const VerificationMeta(
+    'endDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+    'end_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _nextIssueDateMeta = const VerificationMeta(
     'nextIssueDate',
   );
@@ -8332,6 +8354,8 @@ class $RecurringProfilesTblTable extends RecurringProfilesTbl
     id,
     clientId,
     frequency,
+    startDate,
+    endDate,
     nextIssueDate,
     amount,
     description,
@@ -8370,6 +8394,18 @@ class $RecurringProfilesTblTable extends RecurringProfilesTbl
       );
     } else if (isInserting) {
       context.missing(_frequencyMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    }
+    if (data.containsKey('end_date')) {
+      context.handle(
+        _endDateMeta,
+        endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta),
+      );
     }
     if (data.containsKey('next_issue_date')) {
       context.handle(
@@ -8441,6 +8477,14 @@ class $RecurringProfilesTblTable extends RecurringProfilesTbl
         DriftSqlType.string,
         data['${effectivePrefix}frequency'],
       )!,
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      ),
+      endDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_date'],
+      ),
       nextIssueDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}next_issue_date'],
@@ -8475,6 +8519,8 @@ class RecurringProfilesTblData extends DataClass
   final String id;
   final String clientId;
   final String frequency;
+  final DateTime? startDate;
+  final DateTime? endDate;
   final DateTime nextIssueDate;
   final double amount;
   final String description;
@@ -8484,6 +8530,8 @@ class RecurringProfilesTblData extends DataClass
     required this.id,
     required this.clientId,
     required this.frequency,
+    this.startDate,
+    this.endDate,
     required this.nextIssueDate,
     required this.amount,
     required this.description,
@@ -8496,6 +8544,12 @@ class RecurringProfilesTblData extends DataClass
     map['id'] = Variable<String>(id);
     map['client_id'] = Variable<String>(clientId);
     map['frequency'] = Variable<String>(frequency);
+    if (!nullToAbsent || startDate != null) {
+      map['start_date'] = Variable<DateTime>(startDate);
+    }
+    if (!nullToAbsent || endDate != null) {
+      map['end_date'] = Variable<DateTime>(endDate);
+    }
     map['next_issue_date'] = Variable<DateTime>(nextIssueDate);
     map['amount'] = Variable<double>(amount);
     map['description'] = Variable<String>(description);
@@ -8509,6 +8563,12 @@ class RecurringProfilesTblData extends DataClass
       id: Value(id),
       clientId: Value(clientId),
       frequency: Value(frequency),
+      startDate: startDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startDate),
+      endDate: endDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endDate),
       nextIssueDate: Value(nextIssueDate),
       amount: Value(amount),
       description: Value(description),
@@ -8526,6 +8586,8 @@ class RecurringProfilesTblData extends DataClass
       id: serializer.fromJson<String>(json['id']),
       clientId: serializer.fromJson<String>(json['clientId']),
       frequency: serializer.fromJson<String>(json['frequency']),
+      startDate: serializer.fromJson<DateTime?>(json['startDate']),
+      endDate: serializer.fromJson<DateTime?>(json['endDate']),
       nextIssueDate: serializer.fromJson<DateTime>(json['nextIssueDate']),
       amount: serializer.fromJson<double>(json['amount']),
       description: serializer.fromJson<String>(json['description']),
@@ -8540,6 +8602,8 @@ class RecurringProfilesTblData extends DataClass
       'id': serializer.toJson<String>(id),
       'clientId': serializer.toJson<String>(clientId),
       'frequency': serializer.toJson<String>(frequency),
+      'startDate': serializer.toJson<DateTime?>(startDate),
+      'endDate': serializer.toJson<DateTime?>(endDate),
       'nextIssueDate': serializer.toJson<DateTime>(nextIssueDate),
       'amount': serializer.toJson<double>(amount),
       'description': serializer.toJson<String>(description),
@@ -8552,6 +8616,8 @@ class RecurringProfilesTblData extends DataClass
     String? id,
     String? clientId,
     String? frequency,
+    Value<DateTime?> startDate = const Value.absent(),
+    Value<DateTime?> endDate = const Value.absent(),
     DateTime? nextIssueDate,
     double? amount,
     String? description,
@@ -8561,6 +8627,8 @@ class RecurringProfilesTblData extends DataClass
     id: id ?? this.id,
     clientId: clientId ?? this.clientId,
     frequency: frequency ?? this.frequency,
+    startDate: startDate.present ? startDate.value : this.startDate,
+    endDate: endDate.present ? endDate.value : this.endDate,
     nextIssueDate: nextIssueDate ?? this.nextIssueDate,
     amount: amount ?? this.amount,
     description: description ?? this.description,
@@ -8574,6 +8642,8 @@ class RecurringProfilesTblData extends DataClass
       id: data.id.present ? data.id.value : this.id,
       clientId: data.clientId.present ? data.clientId.value : this.clientId,
       frequency: data.frequency.present ? data.frequency.value : this.frequency,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
       nextIssueDate: data.nextIssueDate.present
           ? data.nextIssueDate.value
           : this.nextIssueDate,
@@ -8592,6 +8662,8 @@ class RecurringProfilesTblData extends DataClass
           ..write('id: $id, ')
           ..write('clientId: $clientId, ')
           ..write('frequency: $frequency, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
           ..write('nextIssueDate: $nextIssueDate, ')
           ..write('amount: $amount, ')
           ..write('description: $description, ')
@@ -8606,6 +8678,8 @@ class RecurringProfilesTblData extends DataClass
     id,
     clientId,
     frequency,
+    startDate,
+    endDate,
     nextIssueDate,
     amount,
     description,
@@ -8619,6 +8693,8 @@ class RecurringProfilesTblData extends DataClass
           other.id == this.id &&
           other.clientId == this.clientId &&
           other.frequency == this.frequency &&
+          other.startDate == this.startDate &&
+          other.endDate == this.endDate &&
           other.nextIssueDate == this.nextIssueDate &&
           other.amount == this.amount &&
           other.description == this.description &&
@@ -8631,6 +8707,8 @@ class RecurringProfilesTblCompanion
   final Value<String> id;
   final Value<String> clientId;
   final Value<String> frequency;
+  final Value<DateTime?> startDate;
+  final Value<DateTime?> endDate;
   final Value<DateTime> nextIssueDate;
   final Value<double> amount;
   final Value<String> description;
@@ -8641,6 +8719,8 @@ class RecurringProfilesTblCompanion
     this.id = const Value.absent(),
     this.clientId = const Value.absent(),
     this.frequency = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
     this.nextIssueDate = const Value.absent(),
     this.amount = const Value.absent(),
     this.description = const Value.absent(),
@@ -8652,6 +8732,8 @@ class RecurringProfilesTblCompanion
     required String id,
     required String clientId,
     required String frequency,
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
     required DateTime nextIssueDate,
     required double amount,
     required String description,
@@ -8670,6 +8752,8 @@ class RecurringProfilesTblCompanion
     Expression<String>? id,
     Expression<String>? clientId,
     Expression<String>? frequency,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? endDate,
     Expression<DateTime>? nextIssueDate,
     Expression<double>? amount,
     Expression<String>? description,
@@ -8681,6 +8765,8 @@ class RecurringProfilesTblCompanion
       if (id != null) 'id': id,
       if (clientId != null) 'client_id': clientId,
       if (frequency != null) 'frequency': frequency,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
       if (nextIssueDate != null) 'next_issue_date': nextIssueDate,
       if (amount != null) 'amount': amount,
       if (description != null) 'description': description,
@@ -8694,6 +8780,8 @@ class RecurringProfilesTblCompanion
     Value<String>? id,
     Value<String>? clientId,
     Value<String>? frequency,
+    Value<DateTime?>? startDate,
+    Value<DateTime?>? endDate,
     Value<DateTime>? nextIssueDate,
     Value<double>? amount,
     Value<String>? description,
@@ -8705,6 +8793,8 @@ class RecurringProfilesTblCompanion
       id: id ?? this.id,
       clientId: clientId ?? this.clientId,
       frequency: frequency ?? this.frequency,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
       nextIssueDate: nextIssueDate ?? this.nextIssueDate,
       amount: amount ?? this.amount,
       description: description ?? this.description,
@@ -8725,6 +8815,12 @@ class RecurringProfilesTblCompanion
     }
     if (frequency.present) {
       map['frequency'] = Variable<String>(frequency.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
     }
     if (nextIssueDate.present) {
       map['next_issue_date'] = Variable<DateTime>(nextIssueDate.value);
@@ -8753,6 +8849,8 @@ class RecurringProfilesTblCompanion
           ..write('id: $id, ')
           ..write('clientId: $clientId, ')
           ..write('frequency: $frequency, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
           ..write('nextIssueDate: $nextIssueDate, ')
           ..write('amount: $amount, ')
           ..write('description: $description, ')
@@ -17197,6 +17295,8 @@ typedef $$RecurringProfilesTblTableCreateCompanionBuilder =
       required String id,
       required String clientId,
       required String frequency,
+      Value<DateTime?> startDate,
+      Value<DateTime?> endDate,
       required DateTime nextIssueDate,
       required double amount,
       required String description,
@@ -17209,6 +17309,8 @@ typedef $$RecurringProfilesTblTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> clientId,
       Value<String> frequency,
+      Value<DateTime?> startDate,
+      Value<DateTime?> endDate,
       Value<DateTime> nextIssueDate,
       Value<double> amount,
       Value<String> description,
@@ -17269,6 +17371,16 @@ class $$RecurringProfilesTblTableFilterComposer
 
   ColumnFilters<String> get frequency => $composableBuilder(
     column: $table.frequency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17340,6 +17452,16 @@ class $$RecurringProfilesTblTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get nextIssueDate => $composableBuilder(
     column: $table.nextIssueDate,
     builder: (column) => ColumnOrderings(column),
@@ -17403,6 +17525,12 @@ class $$RecurringProfilesTblTableAnnotationComposer
 
   GeneratedColumn<String> get frequency =>
       $composableBuilder(column: $table.frequency, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
 
   GeneratedColumn<DateTime> get nextIssueDate => $composableBuilder(
     column: $table.nextIssueDate,
@@ -17486,6 +17614,8 @@ class $$RecurringProfilesTblTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> clientId = const Value.absent(),
                 Value<String> frequency = const Value.absent(),
+                Value<DateTime?> startDate = const Value.absent(),
+                Value<DateTime?> endDate = const Value.absent(),
                 Value<DateTime> nextIssueDate = const Value.absent(),
                 Value<double> amount = const Value.absent(),
                 Value<String> description = const Value.absent(),
@@ -17496,6 +17626,8 @@ class $$RecurringProfilesTblTableTableManager
                 id: id,
                 clientId: clientId,
                 frequency: frequency,
+                startDate: startDate,
+                endDate: endDate,
                 nextIssueDate: nextIssueDate,
                 amount: amount,
                 description: description,
@@ -17508,6 +17640,8 @@ class $$RecurringProfilesTblTableTableManager
                 required String id,
                 required String clientId,
                 required String frequency,
+                Value<DateTime?> startDate = const Value.absent(),
+                Value<DateTime?> endDate = const Value.absent(),
                 required DateTime nextIssueDate,
                 required double amount,
                 required String description,
@@ -17518,6 +17652,8 @@ class $$RecurringProfilesTblTableTableManager
                 id: id,
                 clientId: clientId,
                 frequency: frequency,
+                startDate: startDate,
+                endDate: endDate,
                 nextIssueDate: nextIssueDate,
                 amount: amount,
                 description: description,

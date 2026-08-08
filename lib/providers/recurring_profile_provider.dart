@@ -27,6 +27,33 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
     }
   }
 
+  DateTime _getNextDateForFrequency(DateTime currentDate, String frequency) {
+    switch (frequency) {
+      case 'Daily':
+        return currentDate.add(const Duration(days: 1));
+      case 'Weekly':
+        return currentDate.add(const Duration(days: 7));
+      case 'Monthly':
+        final nextMonth = currentDate.month + 1;
+        final nextYear = currentDate.year + (nextMonth > 12 ? 1 : 0);
+        final month = nextMonth > 12 ? nextMonth - 12 : nextMonth;
+        final lastDayOfMonth = DateTime(nextYear, month + 1, 0).day;
+        final day = currentDate.day > lastDayOfMonth ? lastDayOfMonth : currentDate.day;
+        return DateTime(nextYear, month, day);
+      case 'Quarterly':
+        final nextMonth = currentDate.month + 3;
+        final nextYear = currentDate.year + (nextMonth > 12 ? 1 : 0);
+        final month = nextMonth > 12 ? nextMonth - 12 : nextMonth;
+        final lastDayOfMonth = DateTime(nextYear, month + 1, 0).day;
+        final day = currentDate.day > lastDayOfMonth ? lastDayOfMonth : currentDate.day;
+        return DateTime(nextYear, month, day);
+      case 'Yearly':
+        return DateTime(currentDate.year + 1, currentDate.month, currentDate.day);
+      default:
+        return currentDate.add(const Duration(days: 30));
+    }
+  }
+
   Future<int> checkAndGenerateInvoices() async {
     try {
       final now = DateTime.now();
@@ -36,12 +63,28 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
       final profiles = await ref.read(recurringProfileDaoProvider).getAll();
 
       for (final profile in profiles) {
-        if (profile.isActive && (profile.nextIssueDate.isBefore(now) || profile.nextIssueDate.isAtSameMomentAs(now))) {
+        if (!profile.isActive) continue;
+
+        // Skip if start date is in the future
+        if (now.isBefore(profile.startDate)) continue;
+
+        // Auto-deactivate if end date has passed
+        if (profile.endDate != null && now.isAfter(profile.endDate!)) {
+          await ref.read(recurringProfileDaoProvider).update(profile.copyWith(isActive: false));
+          updated = true;
+          continue;
+        }
+
+        if (profile.nextIssueDate.isBefore(now) || profile.nextIssueDate.isAtSameMomentAs(now)) {
           await db.transaction(() async {
             DateTime nextDate = profile.nextIssueDate;
             List<Invoice> generatedInvoices = [];
 
             while (nextDate.isBefore(now) || nextDate.isAtSameMomentAs(now)) {
+              if (profile.endDate != null && nextDate.isAfter(profile.endDate!)) {
+                break;
+              }
+
               final uniqueSuffix = '${nextDate.year}${nextDate.month.toString().padLeft(2, '0')}${nextDate.day.toString().padLeft(2, '0')}';
               final invoiceNum = 'REC-$uniqueSuffix-${const Uuid().v4().substring(0, 4).toUpperCase()}';
 
@@ -61,18 +104,7 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
               );
               generatedInvoices.add(newInvoice);
 
-              if (profile.frequency == 'Weekly') {
-                nextDate = nextDate.add(const Duration(days: 7));
-              } else if (profile.frequency == 'Monthly') {
-                final nextMonth = nextDate.month + 1;
-                final nextYear = nextDate.year + (nextMonth > 12 ? 1 : 0);
-                final month = nextMonth > 12 ? nextMonth - 12 : nextMonth;
-                final lastDayOfMonth = DateTime(nextYear, month + 1, 0).day;
-                final day = nextDate.day > lastDayOfMonth ? lastDayOfMonth : nextDate.day;
-                nextDate = DateTime(nextYear, month, day);
-              } else if (profile.frequency == 'Yearly') {
-                nextDate = DateTime(nextDate.year + 1, nextDate.month, nextDate.day);
-              }
+              nextDate = _getNextDateForFrequency(nextDate, profile.frequency);
             }
 
             for (final inv in generatedInvoices) {
@@ -80,7 +112,11 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
               totalGenerated++;
             }
 
-            final updatedProfile = profile.copyWith(nextIssueDate: nextDate);
+            final isCompleted = profile.endDate != null && nextDate.isAfter(profile.endDate!);
+            final updatedProfile = profile.copyWith(
+              nextIssueDate: nextDate,
+              isActive: isCompleted ? false : profile.isActive,
+            );
             await ref.read(recurringProfileDaoProvider).update(updatedProfile);
           });
           updated = true;
