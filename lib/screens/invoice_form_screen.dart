@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import '../models/invoice.dart';
 import '../models/expense.dart';
 import '../providers/client_provider.dart';
@@ -155,6 +156,70 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
     super.dispose();
   }
 
+  Future<void> _scanBarcodeForItem([int? index]) async {
+    try {
+      final res = await SimpleBarcodeScanner.scanBarcode(
+        context,
+        barcodeAppBar: const BarcodeAppBar(appBarTitle: 'Scan Product Barcode'),
+        isShowFlashIcon: true,
+        delayMillis: 500,
+        cameraFace: CameraFace.back,
+      );
+      if (res != null && res != '-1' && res.isNotEmpty) {
+        final products = ref.read(productsProvider);
+        final match = products.where((p) =>
+          (p.barcode?.toLowerCase() == res.toLowerCase()) ||
+          (p.sku?.toLowerCase() == res.toLowerCase()) ||
+          p.name.toLowerCase() == res.toLowerCase()
+        ).firstOrNull;
+
+        if (match != null) {
+          final defaultTax = ref.read(settingsProvider).defaultTaxPercent;
+          setState(() {
+            if (index != null && index >= 0 && index < lineItems.length) {
+              lineItems[index]['productId'] = match.id;
+              lineItems[index]['description'] = match.name;
+              lineItems[index]['price'] = match.sellingPrice;
+            } else {
+              if (lineItems.isNotEmpty &&
+                  lineItems.last['productId'] == null &&
+                  lineItems.last['description'] == '') {
+                lineItems.last['productId'] = match.id;
+                lineItems.last['description'] = match.name;
+                lineItems.last['price'] = match.sellingPrice;
+              } else {
+                lineItems.add(<String, dynamic>{
+                  'id': const Uuid().v4(),
+                  'productId': match.id,
+                  'description': match.name,
+                  'quantity': 1,
+                  'price': match.sellingPrice,
+                  'tax': defaultTax,
+                  'discount': 0.0,
+                });
+              }
+            }
+          });
+          if (mounted) {
+            AppErrorHandler.showSuccessSnackBar(
+              context,
+              'Selected ${match.name} (Stock: ${match.quantity} ${match.unit})',
+            );
+          }
+        } else {
+          if (mounted) {
+            AppErrorHandler.showErrorSnackBar(
+              context,
+              'No product found in catalog matching barcode/SKU "$res". Please add it to inventory first.',
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Barcode scan error: $e');
+    }
+  }
+
   void _showProductSearchBottomSheet(BuildContext context, int index) {
     final products = ref.read(productsProvider);
     final settings = ref.read(settingsProvider);
@@ -211,6 +276,22 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add at least one line item')));
       return;
     }
+
+    for (final item in lineItems) {
+      final desc = (item['description'] as String? ?? '').trim();
+      final hasProduct = item['productId'] != null;
+      final hasExpense = item['expenseId'] != null;
+      if (!hasProduct && !hasExpense && desc.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a catalog product for all line items.'),
+            backgroundColor: AppTheme.rose,
+          ),
+        );
+        return;
+      }
+    }
+
     if (total < 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Total amount cannot be negative. Please adjust discounts.')));
       return;
@@ -316,6 +397,13 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
   }
 
   Widget _buildLineItem(int index, ThemeData theme, String currencySymbol) {
+    final item = lineItems[index];
+    final productId = item['productId'] as String?;
+    final description = item['description'] as String? ?? '';
+    final isSelected = productId != null || description.isNotEmpty;
+    final products = ref.watch(productsProvider);
+    final selectedProduct = productId != null ? products.where((p) => p.id == productId).firstOrNull : null;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
@@ -324,26 +412,112 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
-                    key: ValueKey('desc_${lineItems[index]['id']}'),
-                    initialValue: lineItems[index]['description'],
-                    onChanged: (v) => lineItems[index]['description'] = v,
-                    validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                    decoration: InputDecoration(
-                      labelText: 'Item Description',
-                      prefixIcon: const Icon(Icons.description),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.inventory_2, color: AppTheme.indigo),
-                        tooltip: 'Browse Inventory',
-                        onPressed: () => _showProductSearchBottomSheet(context, index),
-                      ),
-                    ),
-                  ),
+                  child: isSelected
+                      ? InkWell(
+                          onTap: () => _showProductSearchBottomSheet(context, index),
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.indigo.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: AppTheme.indigo.withValues(alpha: 0.2)),
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: AppTheme.indigo.withValues(alpha: 0.1),
+                                  child: const Icon(Icons.inventory_2, size: 20, color: AppTheme.indigo),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        description,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      if (selectedProduct != null) ...[
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            if (selectedProduct.sku != null && selectedProduct.sku!.isNotEmpty)
+                                              Text('SKU: ${selectedProduct.sku} • ', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                                            Text(
+                                              'Stock: ${selectedProduct.quantity} ${selectedProduct.unit}',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: selectedProduct.isLowStock ? Colors.red : AppTheme.emerald,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Icon(Icons.swap_horiz, size: 20, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                              ],
+                            ),
+                          ),
+                        )
+                      : InkWell(
+                          onTap: () => _showProductSearchBottomSheet(context, index),
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: theme.dividerColor, width: 1.5),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.touch_app_outlined, color: theme.colorScheme.primary, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Select Catalog Product',
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: () => _showProductSearchBottomSheet(context, index),
+                                  icon: const Icon(Icons.search, size: 14),
+                                  label: const Text('Browse', style: TextStyle(fontSize: 12)),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                IconButton(
+                                  onPressed: () => _scanBarcodeForItem(index),
+                                  icon: const Icon(Icons.qr_code_scanner, color: AppTheme.emerald, size: 20),
+                                  tooltip: 'Scan Barcode',
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                 ),
+                const SizedBox(width: 4),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: AppTheme.rose),
                   onPressed: () {
@@ -383,13 +557,13 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
                     validator: (v) {
                       final q = int.tryParse(v ?? '');
                       if (q == null || q <= 0) return 'Must be > 0';
-                      final productId = lineItems[index]['productId'];
-                      if (productId != null) {
-                        final product = ref.read(productsProvider).where((p) => p.id == productId).firstOrNull;
+                      final pId = lineItems[index]['productId'];
+                      if (pId != null) {
+                        final product = ref.read(productsProvider).where((p) => p.id == pId).firstOrNull;
                         if (product != null) {
                           int originalQty = 0;
                           if (widget.id != null && _existingInvoice != null) {
-                            final oldItem = _existingInvoice!.items.where((i) => i.productId == productId).firstOrNull;
+                            final oldItem = _existingInvoice!.items.where((i) => i.productId == pId).firstOrNull;
                             if (oldItem != null) {
                               originalQty = oldItem.quantity;
                             }
@@ -702,17 +876,45 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
               const SizedBox(height: 16),
               ...List.generate(lineItems.length, (index) => _buildLineItem(index, theme, settings.currencySymbol)),
               const SizedBox(height: 8),
-              Center(
-                child: TextButton.icon(
-                  icon: const Icon(Icons.add_circle_outline),
-                  label: const Text('Add Another Item', style: TextStyle(fontWeight: FontWeight.w600)),
-                  onPressed: () {
-                    final defaultTax = ref.read(settingsProvider).defaultTaxPercent;
-                    setState(() {
-                      lineItems.add(<String, dynamic>{'id': const Uuid().v4(), 'description': '', 'quantity': 1, 'price': 0.0, 'tax': defaultTax, 'discount': 0.0});
-                    });
-                  },
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.add_circle_outline, size: 18),
+                    label: const Text('Add Catalog Item', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: () {
+                      final defaultTax = ref.read(settingsProvider).defaultTaxPercent;
+                      setState(() {
+                        lineItems.add(<String, dynamic>{
+                          'id': const Uuid().v4(),
+                          'productId': null,
+                          'description': '',
+                          'quantity': 1,
+                          'price': 0.0,
+                          'tax': defaultTax,
+                          'discount': 0.0,
+                        });
+                      });
+                      _showProductSearchBottomSheet(context, lineItems.length - 1);
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.qr_code_scanner, size: 18),
+                    label: const Text('Scan Barcode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.indigo,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: () => _scanBarcodeForItem(),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               Card(
