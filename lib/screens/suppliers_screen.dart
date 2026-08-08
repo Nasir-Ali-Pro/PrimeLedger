@@ -66,90 +66,111 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
                     itemCount: suppliers.length,
                     itemBuilder: (context, index) {
                       final supplier = suppliers[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Slidable(
-                          key: ValueKey(supplier.id),
-                          endActionPane: ActionPane(
-                            motion: const ScrollMotion(),
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SlidableAction(
-                               onPressed: (ctx) async {
-                                 final confirmed = await ConfirmDialog.show(
-                                   context: context,
-                                   title: 'Delete Supplier',
-                                   message: 'Are you sure you want to delete ${supplier.name}? This will permanently delete all associated purchase orders! This action cannot be undone.',
-                                   confirmLabel: 'Delete',
-                                   confirmColor: theme.colorScheme.error,
-                                 );
-                                 if (confirmed == true) {
-                                   try {
-                                     await ref.read(suppliersProvider.notifier).deleteSupplier(supplier.id);
-                                     if (ctx.mounted) {
-                                       ScaffoldMessenger.of(ctx).showSnackBar(
-                                         SnackBar(
-                                           content: Text('${supplier.name} deleted successfully.'),
-                                           backgroundColor: const Color(0xFF10B981),
-                                         ),
-                                       );
-                                     }
-                                   } catch (e) {
-                                     if (ctx.mounted) {
-                                       String errMsg = e.toString();
-                                       if (errMsg.contains('Exception:')) {
-                                         errMsg = errMsg.substring(errMsg.indexOf('Exception:') + 10);
-                                       }
-                                       showDialog(
-                                         context: ctx,
-                                         builder: (dialogCtx) => AlertDialog(
-                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                           title: const Row(
-                                             children: [
-                                               Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                                               SizedBox(width: 8),
-                                               Text('Deletion Blocked'),
-                                             ],
-                                           ),
-                                           content: Text(errMsg),
-                                           actions: [
-                                             TextButton(
-                                               onPressed: () => Navigator.pop(dialogCtx),
-                                               child: const Text('OK'),
-                                             ),
-                                           ],
-                                         ),
-                                       );
-                                     }
-                                   }
-                                 }
-                               },
-                               backgroundColor: theme.colorScheme.error,
-                               foregroundColor: theme.colorScheme.onError,
-                               icon: Icons.delete,
-                               label: 'Delete',
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 22,
+                                    backgroundColor: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                                    child: Text(supplier.name.isNotEmpty ? supplier.name[0].toUpperCase() : 'S', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF59E0B))),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(supplier.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: theme.colorScheme.onSurface)),
+                                        Text(supplier.email ?? supplier.phone ?? 'No contact info', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              const Divider(height: 1),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: () => context.go('/suppliers/edit/${supplier.id}'),
+                                    icon: const Icon(Icons.edit, size: 16, color: Color(0xFF4F46E5)),
+                                    label: const Text('Edit', style: TextStyle(color: Color(0xFF4F46E5), fontSize: 12, fontWeight: FontWeight.bold)),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      side: const BorderSide(color: Color(0xFF4F46E5)),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                    tooltip: 'Delete Supplier',
+                                    onPressed: () async {
+                                      final confirmed = await ConfirmDialog.show(
+                                        context: context,
+                                        title: 'Delete Supplier',
+                                        message: 'Are you sure you want to delete ${supplier.name}? This will permanently delete all associated purchase orders!',
+                                        confirmLabel: 'Delete',
+                                        confirmColor: theme.colorScheme.error,
+                                      );
+                                      if (confirmed == true) {
+                                        try {
+                                          await ref.read(suppliersProvider.notifier).deleteSupplier(supplier.id);
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text('${supplier.name} deleted successfully.'),
+                                                backgroundColor: const Color(0xFF10B981),
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          if (context.mounted) {
+                                            String errMsg = e.toString();
+                                            if (errMsg.contains('Exception:')) {
+                                              errMsg = errMsg.substring(errMsg.indexOf('Exception:') + 10);
+                                            }
+                                            showDialog(
+                                              context: context,
+                                              builder: (dialogCtx) => AlertDialog(
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                                title: const Row(
+                                                  children: [
+                                                    Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                                                    SizedBox(width: 8),
+                                                    Text('Deletion Blocked'),
+                                                  ],
+                                                ),
+                                                content: Text(errMsg),
+                                                actions: [
+                                                  TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('OK')),
+                                                ],
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      }
+                                    },
+                                  ),
+                                  const Spacer(),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      ref.read(ledgerFilterProvider.notifier).setSupplierFilter(supplier.id);
+                                      context.go('/ledger');
+                                    },
+                                    icon: const Icon(Icons.menu_book, size: 16),
+                                    label: const Text('View Ledger', style: TextStyle(fontSize: 12)),
+                                  ),
+                                ],
                               ),
                             ],
-                          ),
-                          child: Card(
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                              onTap: () {
-                                ref.read(ledgerFilterProvider.notifier).setSupplierFilter(supplier.id);
-                                context.go('/ledger');
-                              },
-                              leading: CircleAvatar(
-                                backgroundColor: const Color(0xFFF59E0B).withValues(alpha: 0.1),
-                                child: Text(supplier.name.isNotEmpty ? supplier.name[0].toUpperCase() : 'S', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF59E0B))),
-                              ),
-                              title: Text(supplier.name, style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
-                              subtitle: Text(supplier.email ?? supplier.phone ?? 'No contact info', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
-                              trailing: IconButton(
-                                icon: Icon(Icons.edit, color: theme.colorScheme.primary),
-                                onPressed: () {
-                                  context.go('/suppliers/edit/${supplier.id}');
-                                },
-                              ),
-                            ),
                           ),
                         ),
                       );

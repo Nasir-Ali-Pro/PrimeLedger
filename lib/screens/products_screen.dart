@@ -88,67 +88,94 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                         itemCount: products.length,
                         itemBuilder: (context, index) {
                           final product = products[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Slidable(
-                              key: ValueKey(product.id),
-                              endActionPane: ActionPane(
-                                motion: const ScrollMotion(),
+                          return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 children: [
-                                  SlidableAction(
-                                    onPressed: (_) => ref.read(productsProvider.notifier).adjustStock(product.id, 1),
-                                    backgroundColor: const Color(0xFF10B981),
-                                    foregroundColor: Colors.white,
-                                    icon: Icons.add,
-                                    label: '+1',
-                                  ),
-                                  SlidableAction(
-                                    onPressed: (_) => _confirmStockAdjust(product, product.quantity, -1),
-                                    backgroundColor: const Color(0xFFF59E0B),
-                                    foregroundColor: Colors.white,
-                                    icon: Icons.remove,
-                                    label: '-1',
-                                  ),
-                                  SlidableAction(
-                                    onPressed: (_) => _confirmDelete(product),
-                                    backgroundColor: const Color(0xFFEF4444),
-                                    foregroundColor: Colors.white,
-                                    icon: Icons.delete,
-                                    label: 'Delete',
-                                  ),
-                                ],
-                              ),
-                              child: Card(
-                                child: ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                  leading: CircleAvatar(
+                                  CircleAvatar(
+                                    radius: 22,
                                     backgroundColor: const Color(0xFF14B8A6).withValues(alpha: 0.1),
                                     child: Text(product.name.isNotEmpty ? product.name[0].toUpperCase() : 'P', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF14B8A6))),
                                   ),
-                                  title: Row(
-                                    children: [
-                                      Expanded(child: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold))),
-                                      if (product.isLowStock)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                          decoration: BoxDecoration(color: const Color(0xFFEF4444).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                                          child: const Text('LOW', style: TextStyle(fontSize: 10, color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(child: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+                                            if (product.isLowStock)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(color: const Color(0xFFEF4444).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                                                child: const Text('LOW', style: TextStyle(fontSize: 10, color: Color(0xFFEF4444), fontWeight: FontWeight.bold)),
+                                              ),
+                                          ],
                                         ),
-                                    ],
+                                        const SizedBox(height: 2),
+                                        Text('SKU: ${product.sku ?? 'N/A'} • Stock: ${product.quantity} ${product.unit}', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                                      ],
+                                    ),
                                   ),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const SizedBox(height: 4),
-                                      Text('SKU: ${product.sku ?? 'N/A'} • ${product.quantity} ${product.unit}', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
-                                    ],
-                                  ),
-                                  trailing: Text('${settings.currencySymbol}${product.sellingPrice.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                  onTap: () => context.go('/products/edit/${product.id}'),
-                                ),
+                                  const SizedBox(width: 12),
+                                  Text('${settings.currencySymbol}${product.sellingPrice.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                ],
                               ),
-                            ),
-                          );
+                              const SizedBox(height: 12),
+                              const Divider(height: 1),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: () => context.go('/products/edit/${product.id}'),
+                                    icon: const Icon(Icons.edit, size: 16, color: Color(0xFF4F46E5)),
+                                    label: const Text('Edit', style: TextStyle(color: Color(0xFF4F46E5), fontSize: 12, fontWeight: FontWeight.bold)),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      side: const BorderSide(color: Color(0xFF4F46E5)),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                    tooltip: 'Delete Product',
+                                    onPressed: () => _confirmDelete(product),
+                                  ),
+                                  const Spacer(),
+                                  Text('Stock: ', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontWeight: FontWeight.w600)),
+                                  InkWell(
+                                    onTap: () => _confirmStockAdjust(product, product.quantity, -1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(color: const Color(0xFFF59E0B).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                                      child: const Icon(Icons.remove, size: 16, color: Color(0xFFF59E0B)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  InkWell(
+                                    onTap: () => ref.read(productsProvider.notifier).adjustStock(product.id, 1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                                      child: const Icon(Icons.add, size: 16, color: Color(0xFF10B981)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
                         },
                       ),
           ),

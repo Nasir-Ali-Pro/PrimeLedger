@@ -73,133 +73,143 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                     itemCount: clients.length,
                     itemBuilder: (context, index) {
                       final client = clients[index];
-                      return Slidable(
-                        key: ValueKey(client.id),
-                        endActionPane: ActionPane(
-                          motion: const ScrollMotion(),
-                          children: [
-                            SlidableAction(
-                              onPressed: (ctx) async {
-                                final confirmed = await ConfirmDialog.show(
-                                  context: context,
-                                  title: 'Delete Client',
-                                  message: 'Are you sure you want to delete ${client.name}? This will permanently delete all associated invoices and payment records! This action cannot be undone.',
-                                  confirmLabel: 'Delete',
-                                  confirmColor: theme.colorScheme.error,
-                                );
-                                if (confirmed == true) {
-                                  try {
-                                    await ref.read(clientsProvider.notifier).deleteClient(client.id);
-                                    if (ctx.mounted) {
-                                      ScaffoldMessenger.of(ctx).showSnackBar(
-                                        SnackBar(
-                                          content: Text('${client.name} deleted successfully.'),
-                                          backgroundColor: const Color(0xFF10B981),
-                                        ),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    if (ctx.mounted) {
-                                      String errMsg = e.toString();
-                                      if (errMsg.contains('Exception:')) {
-                                        errMsg = errMsg.substring(errMsg.indexOf('Exception:') + 10);
-                                      }
-                                      showDialog(
-                                        context: ctx,
-                                        builder: (dialogCtx) => AlertDialog(
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                          title: const Row(
-                                            children: [
-                                              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                                              SizedBox(width: 8),
-                                              Text('Deletion Blocked'),
-                                            ],
-                                          ),
-                                          content: Text(errMsg),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(dialogCtx),
-                                              child: const Text('OK'),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }
-                                  }
-                                }
-                              },
-                              backgroundColor: theme.colorScheme.error,
-                              foregroundColor: theme.colorScheme.onError,
-                              icon: Icons.delete,
-                              label: 'Delete',
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ],
-                        ),
-                        child: Card(
-                          elevation: 2,
-                          margin: const EdgeInsets.only(bottom: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                           child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            onTap: () {
-                              ref.read(ledgerFilterProvider.notifier).setClientFilter(client.id);
-                              context.go('/ledger');
-                            },
-                            leading: CircleAvatar(
-                              radius: 28,
-                              backgroundColor: theme.colorScheme.secondary.withValues(alpha: 0.1),
-                              child: Text(
-                                client.name.isNotEmpty ? client.name[0].toUpperCase() : 'C',
-                                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: theme.colorScheme.secondary),
-                              ),
-                            ),
-                            title: Text(client.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: theme.colorScheme.onSurface)),
-                            subtitle: (client.email == null || client.email!.isEmpty) && (client.phone == null || client.phone!.isEmpty)
-                                ? null
-                                : Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                      return Card(
+                        elevation: 2,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 children: [
-                                  if (client.contactPerson != null && client.contactPerson!.isNotEmpty) ...[
-                                    Row(
+                                  CircleAvatar(
+                                    radius: 24,
+                                    backgroundColor: theme.colorScheme.secondary.withValues(alpha: 0.1),
+                                    child: Text(
+                                      client.name.isNotEmpty ? client.name[0].toUpperCase() : 'C',
+                                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.colorScheme.secondary),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Icon(Icons.person_outline, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                                        const SizedBox(width: 8),
-                                        Text(client.contactPerson!, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontWeight: FontWeight.w500)),
+                                        Text(client.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: theme.colorScheme.onSurface)),
+                                        if (client.contactPerson != null && client.contactPerson!.isNotEmpty)
+                                          Text('Contact: ${client.contactPerson}', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
                                       ],
                                     ),
-                                    const SizedBox(height: 4),
-                                  ],
-                                  if (client.email != null && client.email!.isNotEmpty) ...[
-                                    Row(
-                                      children: [
-                                        Icon(Icons.email, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                                        const SizedBox(width: 8),
-                                        Text(client.email!, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                  ],
-                                  if (client.phone != null && client.phone!.isNotEmpty) ...[
-                                    Row(
-                                      children: [
-                                        Icon(Icons.phone, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                                        const SizedBox(width: 8),
-                                        Text(client.phone!, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-                                      ],
-                                    ),
-                                  ],
+                                  ),
                                 ],
                               ),
-                            ),
-                            trailing: IconButton(
-                              icon: Icon(Icons.edit, color: theme.colorScheme.primary),
-                              onPressed: () {
-                                context.go('/clients/edit/${client.id}');
-                              },
-                            ),
+                              if ((client.email != null && client.email!.isNotEmpty) || (client.phone != null && client.phone!.isNotEmpty)) ...[
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 16,
+                                  runSpacing: 6,
+                                  children: [
+                                    if (client.email != null && client.email!.isNotEmpty)
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.email, size: 14, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                                          const SizedBox(width: 6),
+                                          Text(client.email!, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                                        ],
+                                      ),
+                                    if (client.phone != null && client.phone!.isNotEmpty)
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.phone, size: 14, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                                          const SizedBox(width: 6),
+                                          Text(client.phone!, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                              ],
+                              const SizedBox(height: 12),
+                              const Divider(height: 1),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: () => context.go('/clients/edit/${client.id}'),
+                                    icon: const Icon(Icons.edit, size: 16, color: Color(0xFF4F46E5)),
+                                    label: const Text('Edit', style: TextStyle(color: Color(0xFF4F46E5), fontSize: 12, fontWeight: FontWeight.bold)),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      side: const BorderSide(color: Color(0xFF4F46E5)),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                    tooltip: 'Delete',
+                                    onPressed: () async {
+                                      final confirmed = await ConfirmDialog.show(
+                                        context: context,
+                                        title: 'Delete Client',
+                                        message: 'Are you sure you want to delete ${client.name}? This will permanently delete all associated invoices and payment records!',
+                                        confirmLabel: 'Delete',
+                                        confirmColor: theme.colorScheme.error,
+                                      );
+                                      if (confirmed == true) {
+                                        try {
+                                          await ref.read(clientsProvider.notifier).deleteClient(client.id);
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text('${client.name} deleted successfully.'),
+                                                backgroundColor: const Color(0xFF10B981),
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          if (context.mounted) {
+                                            String errMsg = e.toString();
+                                            if (errMsg.contains('Exception:')) {
+                                              errMsg = errMsg.substring(errMsg.indexOf('Exception:') + 10);
+                                            }
+                                            showDialog(
+                                              context: context,
+                                              builder: (dialogCtx) => AlertDialog(
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                                title: const Row(
+                                                  children: [
+                                                    Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                                                    SizedBox(width: 8),
+                                                    Text('Deletion Blocked'),
+                                                  ],
+                                                ),
+                                                content: Text(errMsg),
+                                                actions: [
+                                                  TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('OK')),
+                                                ],
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      }
+                                    },
+                                  ),
+                                  const Spacer(),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      ref.read(ledgerFilterProvider.notifier).setClientFilter(client.id);
+                                      context.go('/ledger');
+                                    },
+                                    icon: const Icon(Icons.menu_book, size: 16),
+                                    label: const Text('View Ledger', style: TextStyle(fontSize: 12)),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       );
