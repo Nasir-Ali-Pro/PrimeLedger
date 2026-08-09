@@ -49,7 +49,12 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
       final matchesStatus = _statusFilter == null || _statusFilter == 'All' ||
           i.status == _statusFilter;
       return matchesSearch && matchesStatus;
-    }).toList();
+    }).toList()
+      ..sort((a, b) {
+        final cmp = b.issueDate.compareTo(a.issueDate);
+        if (cmp != 0) return cmp;
+        return b.createdAt.compareTo(a.createdAt);
+      });
 
     const statusOptions = ['All', 'Unpaid', 'Partially Paid', 'Paid', 'Overdue', 'Draft', 'Cancelled'];
 

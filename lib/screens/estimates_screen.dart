@@ -50,7 +50,12 @@ class _EstimatesScreenState extends ConsumerState<EstimatesScreen> {
       final matchesStatus = _statusFilter == null || _statusFilter == 'All' ||
           est.status == _statusFilter;
       return matchesSearch && matchesStatus;
-    }).toList();
+    }).toList()
+      ..sort((a, b) {
+        final cmp = b.issueDate.compareTo(a.issueDate);
+        if (cmp != 0) return cmp;
+        return b.createdAt.compareTo(a.createdAt);
+      });
 
     const statusOptions = ['All', 'Draft', 'Sent', 'Converted', 'Declined'];
 

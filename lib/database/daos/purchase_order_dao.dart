@@ -12,7 +12,12 @@ class PurchaseOrderDao {
 
   Future<List<PurchaseOrder>> getAll() async {
     try {
-      final rows = await _db.select(_db.purchaseOrdersTbl).get();
+      final rows = await (_db.select(_db.purchaseOrdersTbl)
+        ..orderBy([
+          (t) => OrderingTerm(expression: t.issueDate, mode: OrderingMode.desc),
+          (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+        ])
+      ).get();
       if (rows.isEmpty) return [];
       final ids = rows.map((r) => r.id).toList();
       final allItems = await (_db.select(_db.poItemsTbl)

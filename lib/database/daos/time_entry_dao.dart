@@ -10,7 +10,12 @@ class TimeEntryDao {
 
   Future<List<TimeEntry>> getAll() async {
     try {
-      final rows = await _db.select(_db.timeEntriesTbl).get();
+      final rows = await (_db.select(_db.timeEntriesTbl)
+        ..orderBy([
+          (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+          (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+        ])
+      ).get();
       return rows.map(_toModel).toList();
     } catch (e) {
       debugPrint('TimeEntryDao.getAll error: $e');

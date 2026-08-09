@@ -41,7 +41,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       final matchesCategory = _selectedCategory == null || _selectedCategory == 'All' ||
           e.category == _selectedCategory;
       return matchesSearch && matchesCategory;
-    }).toList();
+    }).toList()
+      ..sort((a, b) {
+        final cmp = b.date.compareTo(a.date);
+        if (cmp != 0) return cmp;
+        return b.createdAt.compareTo(a.createdAt);
+      });
 
     final totalExpenses = expenses.fold(0.0, (sum, e) => sum + e.amount);
 

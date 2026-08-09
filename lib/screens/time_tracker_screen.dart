@@ -48,7 +48,12 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen> {
           (_filter == 'Invoiced' && entry.isInvoiced);
 
       return matchesSearch && matchesFilter;
-    }).toList();
+    }).toList()
+      ..sort((a, b) {
+        final cmp = b.date.compareTo(a.date);
+        if (cmp != 0) return cmp;
+        return b.createdAt.compareTo(a.createdAt);
+      });
 
     return Scaffold(
       appBar: AppBar(

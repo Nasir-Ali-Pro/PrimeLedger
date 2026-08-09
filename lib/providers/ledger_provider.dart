@@ -387,7 +387,11 @@ List<LedgerEntry> buildLedgerEntries({
   }
 
   if (filter.sortOrder == LedgerSortOrder.recent) {
-    entries.sort((a, b) => b.date.compareTo(a.date));
+    entries.sort((a, b) {
+      final cmp = b.date.compareTo(a.date);
+      if (cmp != 0) return cmp;
+      return b.id.compareTo(a.id);
+    });
   } else if (filter.sortOrder == LedgerSortOrder.oldest) {
     entries.sort((a, b) => a.date.compareTo(b.date));
   } else if (filter.sortOrder == LedgerSortOrder.amountHigh) {

@@ -39,7 +39,12 @@ class _PurchaseOrdersScreenState extends ConsumerState<PurchaseOrdersScreen> {
       final matchesStatus = _statusFilter == null || _statusFilter == 'All' ||
           po.status == _statusFilter;
       return matchesSearch && matchesStatus;
-    }).toList();
+    }).toList()
+      ..sort((a, b) {
+        final cmp = b.issueDate.compareTo(a.issueDate);
+        if (cmp != 0) return cmp;
+        return b.createdAt.compareTo(a.createdAt);
+      });
 
     return Scaffold(
       appBar: AppBar(title: const Text('Purchase Orders')),

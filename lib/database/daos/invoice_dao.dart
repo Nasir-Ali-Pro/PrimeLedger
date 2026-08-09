@@ -11,7 +11,12 @@ class InvoiceDao {
 
   Future<List<Invoice>> getAll() async {
     try {
-      final rows = await _db.select(_db.invoicesTbl).get();
+      final rows = await (_db.select(_db.invoicesTbl)
+        ..orderBy([
+          (t) => OrderingTerm(expression: t.issueDate, mode: OrderingMode.desc),
+          (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+        ])
+      ).get();
       if (rows.isEmpty) return [];
       final ids = rows.map((r) => r.id).toList();
       final allItems = await (_db.select(_db.invoiceItemsTbl)
