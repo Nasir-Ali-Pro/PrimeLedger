@@ -282,13 +282,17 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
         return;
       }
 
+      final cleanStart = DateTime(_startDate.year, _startDate.month, _startDate.day);
+      final cleanEnd = _endDate != null ? DateTime(_endDate!.year, _endDate!.month, _endDate!.day) : null;
+      final cleanNext = DateTime(_nextDate.year, _nextDate.month, _nextDate.day);
+
       final profile = RecurringProfile(
         id: widget.id ?? const Uuid().v4(),
         clientId: _clientId!,
         frequency: _frequency,
-        startDate: _startDate,
-        endDate: _endDate,
-        nextIssueDate: _nextDate,
+        startDate: cleanStart,
+        endDate: cleanEnd,
+        nextIssueDate: cleanNext,
         amount: double.tryParse(_amountCtrl.text) ?? 0,
         description: _descCtrl.text,
       );

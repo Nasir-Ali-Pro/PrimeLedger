@@ -27,36 +27,42 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
     }
   }
 
+  DateTime _stripTime(DateTime dt) {
+    return DateTime(dt.year, dt.month, dt.day);
+  }
+
   DateTime _getNextDateForFrequency(DateTime currentDate, String frequency) {
+    final d = DateTime(currentDate.year, currentDate.month, currentDate.day);
     switch (frequency) {
       case 'Daily':
-        return currentDate.add(const Duration(days: 1));
+        return d.add(const Duration(days: 1));
       case 'Weekly':
-        return currentDate.add(const Duration(days: 7));
+        return d.add(const Duration(days: 7));
       case 'Monthly':
-        final nextMonth = currentDate.month + 1;
-        final nextYear = currentDate.year + (nextMonth > 12 ? 1 : 0);
+        final nextMonth = d.month + 1;
+        final nextYear = d.year + (nextMonth > 12 ? 1 : 0);
         final month = nextMonth > 12 ? nextMonth - 12 : nextMonth;
         final lastDayOfMonth = DateTime(nextYear, month + 1, 0).day;
-        final day = currentDate.day > lastDayOfMonth ? lastDayOfMonth : currentDate.day;
+        final day = d.day > lastDayOfMonth ? lastDayOfMonth : d.day;
         return DateTime(nextYear, month, day);
       case 'Quarterly':
-        final nextMonth = currentDate.month + 3;
-        final nextYear = currentDate.year + (nextMonth > 12 ? 1 : 0);
+        final nextMonth = d.month + 3;
+        final nextYear = d.year + (nextMonth > 12 ? 1 : 0);
         final month = nextMonth > 12 ? nextMonth - 12 : nextMonth;
         final lastDayOfMonth = DateTime(nextYear, month + 1, 0).day;
-        final day = currentDate.day > lastDayOfMonth ? lastDayOfMonth : currentDate.day;
+        final day = d.day > lastDayOfMonth ? lastDayOfMonth : d.day;
         return DateTime(nextYear, month, day);
       case 'Yearly':
-        return DateTime(currentDate.year + 1, currentDate.month, currentDate.day);
+        return DateTime(d.year + 1, d.month, d.day);
       default:
-        return currentDate.add(const Duration(days: 30));
+        return d.add(const Duration(days: 30));
     }
   }
 
   Future<int> checkAndGenerateInvoices() async {
     try {
-      final now = DateTime.now();
+      final nowRaw = DateTime.now();
+      final todayDate = _stripTime(nowRaw);
       int totalGenerated = 0;
       bool updated = false;
       final db = ref.read(databaseProvider);
@@ -65,23 +71,27 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
       for (final profile in profiles) {
         if (!profile.isActive) continue;
 
+        final startDate = _stripTime(profile.startDate);
+        final endDate = profile.endDate != null ? _stripTime(profile.endDate!) : null;
+
         // Skip if start date is in the future
-        if (now.isBefore(profile.startDate)) continue;
+        if (todayDate.isBefore(startDate)) continue;
 
         // Auto-deactivate if end date has passed
-        if (profile.endDate != null && now.isAfter(profile.endDate!)) {
+        if (endDate != null && todayDate.isAfter(endDate)) {
           await ref.read(recurringProfileDaoProvider).update(profile.copyWith(isActive: false));
           updated = true;
           continue;
         }
 
-        if (profile.nextIssueDate.isBefore(now) || profile.nextIssueDate.isAtSameMomentAs(now)) {
+        DateTime nextDate = _stripTime(profile.nextIssueDate);
+
+        if (nextDate.isBefore(todayDate) || nextDate.isAtSameMomentAs(todayDate)) {
           await db.transaction(() async {
-            DateTime nextDate = profile.nextIssueDate;
             List<Invoice> generatedInvoices = [];
 
-            while (nextDate.isBefore(now) || nextDate.isAtSameMomentAs(now)) {
-              if (profile.endDate != null && nextDate.isAfter(profile.endDate!)) {
+            while (nextDate.isBefore(todayDate) || nextDate.isAtSameMomentAs(todayDate)) {
+              if (endDate != null && nextDate.isAfter(endDate)) {
                 break;
               }
 
@@ -112,8 +122,10 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
               totalGenerated++;
             }
 
-            final isCompleted = profile.endDate != null && nextDate.isAfter(profile.endDate!);
+            final isCompleted = endDate != null && nextDate.isAfter(endDate);
             final updatedProfile = profile.copyWith(
+              startDate: startDate,
+              endDate: profile.endDate != null ? endDate : null,
               nextIssueDate: nextDate,
               isActive: isCompleted ? false : profile.isActive,
             );
