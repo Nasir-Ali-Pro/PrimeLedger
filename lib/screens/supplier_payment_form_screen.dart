@@ -163,15 +163,14 @@ class _SupplierPaymentFormScreenState extends ConsumerState<SupplierPaymentFormS
                         createdAt: DateTime.now(),
                       );
 
-                      final router = GoRouter.of(context);
-                      final scaffoldMessenger = ScaffoldMessenger.of(context);
-
                       LoadingOverlay.show(context, message: 'Saving...');
                       try {
                         await ref.read(supplierPaymentsProvider.notifier).addPayment(payment);
                         LoadingOverlay.hide();
-                        AppErrorHandler.showSuccessSnackBar(context, 'Supplier payment recorded successfully!');
-                        router.pop();
+                        if (mounted) {
+                          AppErrorHandler.showSuccessSnackBar(context, 'Supplier payment recorded successfully!');
+                          context.pop();
+                        }
                       } catch (e) {
                         LoadingOverlay.hide();
                         if (mounted) {

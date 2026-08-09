@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import '../providers/product_provider.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/empty_state.dart';

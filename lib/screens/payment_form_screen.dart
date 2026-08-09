@@ -166,15 +166,14 @@ class _PaymentFormScreenState extends ConsumerState<PaymentFormScreen> {
                         createdAt: DateTime.now(),
                       );
 
-                      final router = GoRouter.of(context);
-                      final scaffoldMessenger = ScaffoldMessenger.of(context);
-                      
                       LoadingOverlay.show(context, message: 'Saving...');
                       try {
                         await ref.read(paymentsProvider.notifier).addPayment(payment);
                         LoadingOverlay.hide();
-                        AppErrorHandler.showSuccessSnackBar(context, 'Payment recorded successfully!');
-                        router.pop();
+                        if (mounted) {
+                          AppErrorHandler.showSuccessSnackBar(context, 'Payment recorded successfully!');
+                          context.pop();
+                        }
                       } catch (e) {
                         LoadingOverlay.hide();
                         if (mounted) {

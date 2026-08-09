@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../providers/recurring_profile_provider.dart';
 import '../providers/client_provider.dart';
 import '../providers/settings_provider.dart';
-import '../models/recurring_profile.dart';
 import '../models/client.dart';
 import '../widgets/loading_overlay.dart';
 import 'package:intl/intl.dart';

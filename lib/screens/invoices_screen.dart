@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import '../providers/invoice_provider.dart';
 import '../providers/client_provider.dart';
 import '../providers/settings_provider.dart';
@@ -34,7 +33,6 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
   @override
   Widget build(BuildContext context) {
     final allInvoices = ref.watch(invoicesProvider);
-    final settings = ref.watch(settingsProvider);
     final payments = ref.watch(paymentsProvider);
     final expenses = ref.watch(expensesProvider);
     final theme = Theme.of(context);

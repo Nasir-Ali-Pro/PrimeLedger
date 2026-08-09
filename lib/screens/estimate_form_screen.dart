@@ -111,9 +111,6 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
 
   Future<void> _convertToInvoice() async {
     if (_existing == null) return;
-    
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
 
     // Stock availability check
     final products = ref.read(productsProvider);
@@ -219,8 +216,10 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
       await ref.read(productsProvider.notifier).refresh();
 
       LoadingOverlay.hide();
-      AppErrorHandler.showSuccessSnackBar(context, 'Converted to Invoice $targetInvNum! Inventory stock updated.');
-      navigator.pop();
+      if (mounted) {
+        AppErrorHandler.showSuccessSnackBar(context, 'Converted to Invoice $targetInvNum! Inventory stock updated.');
+        context.pop();
+      }
     } catch (e) {
       LoadingOverlay.hide();
       if (mounted) {
