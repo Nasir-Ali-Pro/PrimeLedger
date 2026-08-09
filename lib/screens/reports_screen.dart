@@ -115,23 +115,46 @@ class ReportsScreen extends ConsumerWidget {
     final settings = ref.read(settingsProvider);
     final products = ref.read(productsProvider);
     
+    final invoiceMap = {for (final i in invoices) i.id: i};
     final validInvoices = invoices.where((i) => i.status != 'Draft' && i.status != 'Cancelled').toList();
     final revenue = validInvoices.fold(0.0, (sum, i) => sum + (i.totalAmount - i.taxTotal));
-    final totalExpenses = expenses.where((e) => !e.isBillable).fold(0.0, (sum, e) => sum + e.amount);
 
     final productMap = {for (final p in products) p.id: p};
-    double totalCogs = 0;
+    double productCogs = 0;
     for (final inv in validInvoices) {
       for (final item in inv.items) {
         if (item.productId != null) {
           final prod = productMap[item.productId];
           if (prod != null) {
-            totalCogs += item.quantity * prod.costPrice;
+            productCogs += item.quantity * prod.costPrice;
           }
         }
       }
     }
 
+    double billedExpenseCogs = 0;
+    double unbilledExpenseCost = 0;
+    double nonBillableExpenseCost = 0;
+
+    for (final exp in expenses) {
+      if (exp.isBillable) {
+        if (exp.invoiceId != null) {
+          final linkedInv = invoiceMap[exp.invoiceId];
+          if (linkedInv != null && linkedInv.status != 'Draft' && linkedInv.status != 'Cancelled') {
+            billedExpenseCogs += exp.amount;
+          } else {
+            unbilledExpenseCost += exp.amount;
+          }
+        } else {
+          unbilledExpenseCost += exp.amount;
+        }
+      } else {
+        nonBillableExpenseCost += exp.amount;
+      }
+    }
+
+    final totalCogs = productCogs + billedExpenseCogs;
+    final totalExpenses = nonBillableExpenseCost + unbilledExpenseCost;
     final profit = revenue - totalCogs - totalExpenses;
 
     final headers = ['Category', 'Amount'];

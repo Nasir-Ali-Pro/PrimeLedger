@@ -215,6 +215,12 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
         }
       }
 
+      // Reset linked expenses so they return to unbilled state
+      final linkedExpenses = ref.read(expensesProvider).where((e) => e.invoiceId == id).toList();
+      for (final exp in linkedExpenses) {
+        await ref.read(expenseDaoProvider).update(exp.copyWith(invoiceId: null));
+      }
+
       await ref.read(invoiceDaoProvider).delete(id);
       await _load();
       await ref.read(expensesProvider.notifier).refresh();

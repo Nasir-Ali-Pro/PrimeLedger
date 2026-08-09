@@ -104,31 +104,43 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with WidgetsB
 
     final outstanding = clientOutstanding + supplierOutstanding;
 
-    final totalExpenses = expenses.where((e) => !e.isBillable).fold(0.0, (sum, e) => sum + e.amount);
     final productMap = {for (final p in products) p.id: p};
 
-    final expensesByInvoice = <String, List<dynamic>>{};
-    for (final e in expenses) {
-      if (e.invoiceId != null) {
-        expensesByInvoice.putIfAbsent(e.invoiceId!, () => []).add(e);
-      }
-    }
-
-    double totalCogs = 0;
+    double productCogs = 0;
     for (final inv in validInvoices) {
       for (final item in inv.items) {
         if (item.productId != null) {
           final prod = productMap[item.productId];
           if (prod != null) {
-            totalCogs += item.quantity * prod.costPrice;
+            productCogs += item.quantity * prod.costPrice;
           }
         }
       }
-      final linkedExpenses = expensesByInvoice[inv.id] ?? [];
-      for (final exp in linkedExpenses) {
-        totalCogs += exp.amount;
+    }
+
+    double billedExpenseCogs = 0;
+    double unbilledExpenseCost = 0;
+    double nonBillableExpenseCost = 0;
+
+    for (final exp in expenses) {
+      if (exp.isBillable) {
+        if (exp.invoiceId != null) {
+          final linkedInv = invoiceMap[exp.invoiceId];
+          if (linkedInv != null && linkedInv.status != 'Draft' && linkedInv.status != 'Cancelled') {
+            billedExpenseCogs += exp.amount;
+          } else {
+            unbilledExpenseCost += exp.amount;
+          }
+        } else {
+          unbilledExpenseCost += exp.amount;
+        }
+      } else {
+        nonBillableExpenseCost += exp.amount;
       }
     }
+
+    final totalCogs = productCogs + billedExpenseCogs;
+    final totalExpenses = nonBillableExpenseCost + unbilledExpenseCost;
     final netProfit = totalRevenue - totalCogs - totalExpenses;
     final stockValue = products.fold(0.0, (sum, p) => sum + p.stockValue);
     final lowStockCount = products.where((p) => p.isLowStock).length;

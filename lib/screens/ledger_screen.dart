@@ -212,16 +212,16 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         _CardData('Total POs', totalCount, Icons.numbers, const [Color(0xFF14B8A6), Color(0xFF0D9488)], isCount: true),
       ]);
     } else {
+      final invoiceMap = {for (final i in invoices) i.id: i};
       final validInvoices = invoices.where((i) => i.status != 'Draft' && i.status != 'Cancelled').toList();
       final totalRevenue = validInvoices.fold(0.0, (s, i) => s + (i.totalAmount - i.taxTotal));
-      final totalExpenses = expenses.where((e) => !e.isBillable).fold(0.0, (s, e) => s + e.amount);
       final totalRevenueGross = validInvoices.fold(0.0, (s, i) => s + i.totalAmount);
       final validInvoiceIds = validInvoices.map((i) => i.id).toSet();
       final totalCollected = payments.where((p) => validInvoiceIds.contains(p.invoiceId)).fold(0.0, (s, p) => s + p.amount);
       final totalUnbilledExpenses = expenses.where((e) {
         if (!e.isBillable) return false;
         if (e.invoiceId == null) return true;
-        final linkedInv = invoices.where((i) => i.id == e.invoiceId).firstOrNull;
+        final linkedInv = invoiceMap[e.invoiceId];
         return linkedInv == null || linkedInv.status == 'Draft' || linkedInv.status == 'Cancelled';
       }).fold(0.0, (s, e) => s + e.amount * (1 + e.markupPercent / 100));
       final clientOutstanding = totalRevenueGross + totalUnbilledExpenses - totalCollected;
@@ -232,21 +232,41 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       final supplierOutstanding = totalPurchases - totalSupplierPaid;
       final netOutstanding = clientOutstanding + supplierOutstanding;
 
-      double totalCogs = 0;
+      double productCogs = 0;
       for (final inv in validInvoices) {
         for (final item in inv.items) {
           if (item.productId != null) {
             final prod = productMap[item.productId];
             if (prod != null) {
-              totalCogs += item.quantity * prod.costPrice;
+              productCogs += item.quantity * prod.costPrice;
             }
           }
         }
-        final linkedExpenses = expenses.where((e) => e.invoiceId == inv.id);
-        for (final exp in linkedExpenses) {
-          totalCogs += exp.amount;
+      }
+
+      double billedExpenseCogs = 0;
+      double unbilledExpenseCost = 0;
+      double nonBillableExpenseCost = 0;
+
+      for (final exp in expenses) {
+        if (exp.isBillable) {
+          if (exp.invoiceId != null) {
+            final linkedInv = invoiceMap[exp.invoiceId];
+            if (linkedInv != null && linkedInv.status != 'Draft' && linkedInv.status != 'Cancelled') {
+              billedExpenseCogs += exp.amount;
+            } else {
+              unbilledExpenseCost += exp.amount;
+            }
+          } else {
+            unbilledExpenseCost += exp.amount;
+          }
+        } else {
+          nonBillableExpenseCost += exp.amount;
         }
       }
+
+      final totalCogs = productCogs + billedExpenseCogs;
+      final totalExpenses = nonBillableExpenseCost + unbilledExpenseCost;
       final netBalance = totalRevenue - totalCogs - totalExpenses;
 
       return _buildSummaryCardsRow(theme, settings, [

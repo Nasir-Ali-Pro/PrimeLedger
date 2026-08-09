@@ -3,6 +3,7 @@ import 'dart:convert';
 class InvoiceItem {
   final String id;
   final String? productId;
+  final String? expenseId;
   final String description;
   final int quantity;
   final double rate;
@@ -14,6 +15,7 @@ class InvoiceItem {
   InvoiceItem({
     this.id = '',
     this.productId,
+    this.expenseId,
     required this.description,
     required this.quantity,
     required this.rate,
@@ -26,6 +28,7 @@ class InvoiceItem {
   InvoiceItem copyWith({
     String? id,
     String? productId,
+    String? expenseId,
     String? description,
     int? quantity,
     double? rate,
@@ -37,6 +40,7 @@ class InvoiceItem {
     return InvoiceItem(
       id: id ?? this.id,
       productId: productId ?? this.productId,
+      expenseId: expenseId ?? this.expenseId,
       description: description ?? this.description,
       quantity: quantity ?? this.quantity,
       rate: rate ?? this.rate,
@@ -51,6 +55,7 @@ class InvoiceItem {
     return {
       'id': id,
       'productId': productId,
+      'expenseId': expenseId,
       'description': description,
       'quantity': quantity,
       'rate': rate,
@@ -65,6 +70,7 @@ class InvoiceItem {
     return InvoiceItem(
       id: map['id'] ?? '',
       productId: map['productId'],
+      expenseId: map['expenseId'],
       description: map['description'] ?? '',
       quantity: (map['quantity'] as num?)?.toInt() ?? 1,
       rate: (map['rate'] as num?)?.toDouble() ?? 0.0,

@@ -107,7 +107,7 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
               'price': i.rate,
               'tax': i.taxPercent,
               'discount': 0.0,
-              'expenseId': matchedExpense?.id,
+              'expenseId': i.expenseId ?? matchedExpense?.id,
             };
           }).toList();
 
@@ -327,6 +327,7 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
         return InvoiceItem(
           id: item['id'] as String? ?? '',
           productId: item['productId'] as String?,
+          expenseId: item['expenseId'] as String?,
           description: item['description'] ?? '',
           quantity: qty.toInt(),
           rate: price,
@@ -369,19 +370,27 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
       }
     }
 
+    final allLinkedExpenseIds = lineItems
+        .map((item) => item['expenseId'] as String?)
+        .where((id) => id != null && id.isNotEmpty)
+        .cast<String>()
+        .toSet()
+        .union(_importedExpenseIds.toSet())
+        .toList();
+
     final partialAmt = _status == 'Partially Paid' ? (double.tryParse(_partialPaymentCtrl.text) ?? 0.0) : null;
     LoadingOverlay.show(context, message: isEditing ? 'Updating...' : 'Saving...');
     try {
       if (isEditing) {
         await ref.read(invoicesProvider.notifier).updateInvoice(
           invoice,
-          linkedExpenseIds: _importedExpenseIds,
+          linkedExpenseIds: allLinkedExpenseIds,
           paymentAmount: partialAmt,
         );
       } else {
         await ref.read(invoicesProvider.notifier).addInvoice(
           invoice,
-          linkedExpenseIds: _importedExpenseIds,
+          linkedExpenseIds: allLinkedExpenseIds,
           paymentAmount: partialAmt,
         );
       }
