@@ -6,6 +6,27 @@ import 'package:printing/printing.dart';
 import '../models/settings.dart';
 
 class PdfService {
+  static pw.Font? _cachedRegularFont;
+  static pw.Font? _cachedBoldFont;
+
+  static Future<pw.Font> _getRegularFont() async {
+    try {
+      _cachedRegularFont ??= await PdfGoogleFonts.robotoRegular();
+      return _cachedRegularFont!;
+    } catch (_) {
+      return pw.Font.helvetica();
+    }
+  }
+
+  static Future<pw.Font> _getBoldFont() async {
+    try {
+      _cachedBoldFont ??= await PdfGoogleFonts.robotoBold();
+      return _cachedBoldFont!;
+    } catch (_) {
+      return pw.Font.helveticaBold();
+    }
+  }
+
   static Future<void> generateInvoicePdf(Map<String, dynamic> invoiceData, AppSettings settings) async {
     final pdf = pw.Document();
     
@@ -31,8 +52,8 @@ class PdfService {
     final List<dynamic> rawItems = invoiceData['items'] ?? [];
     final List<Map<String, dynamic>> items = rawItems.cast<Map<String, dynamic>>();
     
-    final font = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
+    final font = await _getRegularFont();
+    final fontBold = await _getBoldFont();
 
     final subtotal = (invoiceData['subtotal'] as num?)?.toDouble() ?? 0.0;
     final taxTotal = (invoiceData['tax'] as num?)?.toDouble() ?? 0.0;
@@ -332,8 +353,8 @@ class PdfService {
   static Future<void> generateReportPdf(String title, List<String> headers, List<List<dynamic>> data, AppSettings settings) async {
     final pdf = pw.Document();
     
-    final font = await PdfGoogleFonts.robotoRegular();
-    final fontBold = await PdfGoogleFonts.robotoBold();
+    final font = await _getRegularFont();
+    final fontBold = await _getBoldFont();
 
     pdf.addPage(
       pw.MultiPage(
