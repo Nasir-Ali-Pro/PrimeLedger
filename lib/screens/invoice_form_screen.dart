@@ -5,9 +5,11 @@ import 'package:uuid/uuid.dart';
 import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 import '../models/invoice.dart';
 import '../models/expense.dart';
+import '../models/time_entry.dart';
 import '../providers/client_provider.dart';
 import '../providers/invoice_provider.dart';
 import '../providers/expense_provider.dart';
+import '../providers/time_entry_provider.dart';
 import '../providers/payment_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/settings_provider.dart';
@@ -43,6 +45,7 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
   final _partialPaymentCtrl = TextEditingController(text: '0.0');
   String _status = 'Draft';
   List<String> _importedExpenseIds = [];
+  List<String> _importedTimeEntryIds = [];
   
   double get subtotal => lineItems.fold(0.0, (sum, item) {
     double qty = (item['quantity'] ?? 1).toDouble();
@@ -270,6 +273,33 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
     });
   }
 
+  void _importTimeEntry(TimeEntry entry) {
+    if (_importedTimeEntryIds.contains(entry.id)) return;
+    final totalAmount = entry.hours * entry.rate;
+    setState(() {
+      _importedTimeEntryIds.add(entry.id);
+      
+      if (lineItems.length == 1 &&
+          lineItems[0]['description'] == '' &&
+          lineItems[0]['price'] == 0.0 &&
+          lineItems[0]['productId'] == null) {
+        lineItems.removeAt(0);
+      }
+      
+      final defaultTax = ref.read(settingsProvider).defaultTaxPercent;
+      lineItems.add(<String, dynamic>{
+        'id': const Uuid().v4(),
+        'productId': null,
+        'description': '${entry.taskName} (${entry.hours} hrs @ ${entry.rate}/hr)',
+        'quantity': 1,
+        'price': double.parse(totalAmount.toStringAsFixed(2)),
+        'tax': defaultTax,
+        'discount': 0.0,
+        'timeEntryId': entry.id,
+      });
+    });
+  }
+
   Future<void> _saveInvoice() async {
     if (!_formKey.currentState!.validate()) return;
     if (lineItems.isEmpty) {
@@ -281,7 +311,8 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
       final desc = (item['description'] as String? ?? '').trim();
       final hasProduct = item['productId'] != null;
       final hasExpense = item['expenseId'] != null;
-      if (!hasProduct && !hasExpense && desc.isEmpty) {
+      final hasTimeEntry = item['timeEntryId'] != null;
+      if (!hasProduct && !hasExpense && !hasTimeEntry && desc.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please select a catalog product for all line items.'),
@@ -378,6 +409,14 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
         .union(_importedExpenseIds.toSet())
         .toList();
 
+    final allLinkedTimeEntryIds = lineItems
+        .map((item) => item['timeEntryId'] as String?)
+        .where((id) => id != null && id.isNotEmpty)
+        .cast<String>()
+        .toSet()
+        .union(_importedTimeEntryIds.toSet())
+        .toList();
+
     final partialAmt = _status == 'Partially Paid' ? (double.tryParse(_partialPaymentCtrl.text) ?? 0.0) : null;
     LoadingOverlay.show(context, message: isEditing ? 'Updating...' : 'Saving...');
     try {
@@ -385,12 +424,14 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
         await ref.read(invoicesProvider.notifier).updateInvoice(
           invoice,
           linkedExpenseIds: allLinkedExpenseIds,
+          linkedTimeEntryIds: allLinkedTimeEntryIds,
           paymentAmount: partialAmt,
         );
       } else {
         await ref.read(invoicesProvider.notifier).addInvoice(
           invoice,
           linkedExpenseIds: allLinkedExpenseIds,
+          linkedTimeEntryIds: allLinkedTimeEntryIds,
           paymentAmount: partialAmt,
         );
       }
@@ -734,6 +775,88 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
                                       IconButton(
                                         icon: const Icon(Icons.add_circle, color: AppTheme.indigo),
                                         onPressed: () => _importExpense(exp),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final timeEntries = ref.watch(timeEntriesProvider);
+                    final settings = ref.watch(settingsProvider);
+                    final clientEntries = timeEntries.where((t) {
+                      if (t.clientId != selectedClientId || !t.isBillable || t.isInvoiced) return false;
+                      return !_importedTimeEntryIds.contains(t.id);
+                    }).toList();
+
+                    if (clientEntries.isEmpty) return const SizedBox.shrink();
+
+                    return Container(
+                      margin: const EdgeInsets.only(top: 16),
+                      child: Card(
+                        elevation: 0,
+                        color: AppTheme.purple.withValues(alpha: 0.05),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(color: AppTheme.purple.withValues(alpha: 0.15)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.timer, color: AppTheme.purple),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Unbilled Time Entries (${clientEntries.length})',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.purple, fontSize: 15),
+                                      ),
+                                    ],
+                                  ),
+                                  TextButton.icon(
+                                    icon: const Icon(Icons.download, size: 16),
+                                    label: const Text('Import All', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    onPressed: () {
+                                      for (final entry in clientEntries) {
+                                        _importTimeEntry(entry);
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                              const Divider(height: 16),
+                              ...clientEntries.map((entry) {
+                                final totalAmount = entry.hours * entry.rate;
+                                return ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(entry.taskName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  subtitle: Text(
+                                    '${entry.hours} hrs @ ${settings.currencySymbol}${entry.rate}/hr',
+                                    style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 12),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        settings.formatCurrency(totalAmount),
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        icon: const Icon(Icons.add_circle, color: AppTheme.purple),
+                                        onPressed: () => _importTimeEntry(entry),
                                       ),
                                     ],
                                   ),

@@ -7,6 +7,7 @@ import 'product_provider.dart';
 import 'payment_provider.dart';
 import 'expense_provider.dart';
 import 'estimate_provider.dart';
+import 'time_entry_provider.dart';
 import '../models/payment.dart';
 import 'package:uuid/uuid.dart';
 
@@ -34,7 +35,7 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
     await _load();
   }
 
-  Future<void> addInvoice(Invoice invoice, {List<String> linkedExpenseIds = const [], double? paymentAmount}) async {
+  Future<void> addInvoice(Invoice invoice, {List<String> linkedExpenseIds = const [], List<String> linkedTimeEntryIds = const [], double? paymentAmount}) async {
     try {
       final db = ref.read(databaseProvider);
       await db.transaction(() async {
@@ -45,6 +46,14 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
           final exp = ref.read(expensesProvider).where((e) => e.id == expId).firstOrNull;
           if (exp != null) {
             await ref.read(expenseDaoProvider).update(exp.copyWith(invoiceId: invoice.id));
+          }
+        }
+
+        // Link time entries
+        for (final timeId in linkedTimeEntryIds) {
+          final entry = await ref.read(timeEntryDaoProvider).getById(timeId);
+          if (entry != null) {
+            await ref.read(timeEntryDaoProvider).update(entry.copyWith(isInvoiced: true));
           }
         }
         
@@ -78,6 +87,7 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
 
       await _load();
       await ref.read(expensesProvider.notifier).refresh();
+      await ref.read(timeEntriesProvider.notifier).build();
       await ref.read(paymentsProvider.notifier).refresh();
       await ref.read(productsProvider.notifier).refresh();
     } catch (e) {
@@ -86,7 +96,7 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
     }
   }
 
-  Future<void> updateInvoice(Invoice invoice, {List<String> linkedExpenseIds = const [], double? paymentAmount}) async {
+  Future<void> updateInvoice(Invoice invoice, {List<String> linkedExpenseIds = const [], List<String> linkedTimeEntryIds = const [], double? paymentAmount}) async {
     try {
       // Unlink all expenses currently linked to this invoice
       final allExpenses = ref.read(expensesProvider);
@@ -99,6 +109,14 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
         final exp = allExpenses.where((e) => e.id == expId).firstOrNull;
         if (exp != null) {
           await ref.read(expenseDaoProvider).update(exp.copyWith(invoiceId: invoice.id));
+        }
+      }
+
+      // Link time entries
+      for (final timeId in linkedTimeEntryIds) {
+        final entry = await ref.read(timeEntryDaoProvider).getById(timeId);
+        if (entry != null) {
+          await ref.read(timeEntryDaoProvider).update(entry.copyWith(isInvoiced: true));
         }
       }
 
@@ -123,7 +141,7 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
               amount: diff,
               date: invoice.issueDate,
               paymentMethod: 'Cash',
-              notes: 'Auto-recorded remaining payment on invoice edit',
+              notes: 'Auto-recorded payment on invoice update',
               createdAt: DateTime.now(),
             );
             await ref.read(paymentDaoProvider).insert(payment);
@@ -145,37 +163,18 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
             await ref.read(paymentDaoProvider).insert(payment);
           }
         } else if (invoice.status == 'Partially Paid' && paymentAmount != null && paymentAmount > 0.01) {
-          final diff = paymentAmount - totalPaidBefore;
-          if (diff > 0.01) {
-            final payment = Payment(
-              id: const Uuid().v4(),
-              invoiceId: invoice.id,
-              clientId: invoice.clientId,
-              amount: diff,
-              date: invoice.issueDate,
-              paymentMethod: 'Cash',
-              notes: 'Auto-recorded partial payment on invoice edit',
-              createdAt: DateTime.now(),
-            );
-            await ref.read(paymentDaoProvider).insert(payment);
-          } else if (diff < -0.01) {
-            // Paid amount is reduced, delete existing and recreate a single partial payment
-            for (final p in thisInvoicePayments) {
-              await ref.read(paymentDaoProvider).delete(p.id);
-            }
-            final payment = Payment(
-              id: const Uuid().v4(),
-              invoiceId: invoice.id,
-              clientId: invoice.clientId,
-              amount: paymentAmount,
-              date: invoice.issueDate,
-              paymentMethod: 'Cash',
-              notes: 'Auto-recorded partial payment on invoice edit',
-              createdAt: DateTime.now(),
-            );
-            await ref.read(paymentDaoProvider).insert(payment);
-          }
-        } else if (invoice.status == 'Draft' || invoice.status == 'Cancelled' || invoice.status == 'Sent' || invoice.status == 'Overdue') {
+          final payment = Payment(
+            id: const Uuid().v4(),
+            invoiceId: invoice.id,
+            clientId: invoice.clientId,
+            amount: paymentAmount,
+            date: invoice.issueDate,
+            paymentMethod: 'Cash',
+            notes: 'Auto-recorded partial payment on invoice update',
+            createdAt: DateTime.now(),
+          );
+          await ref.read(paymentDaoProvider).insert(payment);
+        } else if (invoice.status == 'Draft' || invoice.status == 'Cancelled') {
           // Delete all payments if status is not paid/partially paid
           for (final p in thisInvoicePayments) {
             await ref.read(paymentDaoProvider).delete(p.id);
@@ -185,6 +184,7 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
 
       await _load();
       await ref.read(expensesProvider.notifier).refresh();
+      await ref.read(timeEntriesProvider.notifier).build();
       await ref.read(paymentsProvider.notifier).refresh();
       await ref.read(productsProvider.notifier).refresh();
     } catch (e) {
@@ -224,6 +224,7 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
       await ref.read(invoiceDaoProvider).delete(id);
       await _load();
       await ref.read(expensesProvider.notifier).refresh();
+      await ref.read(timeEntriesProvider.notifier).build();
       await ref.read(productsProvider.notifier).refresh();
       await ref.read(paymentsProvider.notifier).refresh();
     } catch (e) {

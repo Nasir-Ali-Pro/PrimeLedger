@@ -1,38 +1,69 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/native.dart';
+import 'package:prime_ledger/database/database.dart';
+import 'package:prime_ledger/database/daos/client_dao.dart';
+import 'package:prime_ledger/database/daos/time_entry_dao.dart';
+import 'package:prime_ledger/database/daos/invoice_dao.dart';
+import 'package:prime_ledger/models/client.dart';
 import 'package:prime_ledger/models/time_entry.dart';
+import 'package:prime_ledger/models/invoice.dart';
 
 void main() {
-  group('Time Tracker & Billing Unit Tests', () {
-    test('Calculates total billable amount accurately for time entries', () {
-      final entry1 = TimeEntry(
-        id: 'te-1',
-        clientId: 'client-1',
-        taskName: 'UI Design & Wireframing',
-        hours: 5.5,
-        rate: 60.0,
-        isBillable: true,
-        date: DateTime.now(),
-        createdAt: DateTime.now(),
-      );
+  late AppDatabase db;
+  late ClientDao clientDao;
+  late TimeEntryDao timeEntryDao;
+  late InvoiceDao invoiceDao;
 
-      final entry2 = TimeEntry(
-        id: 'te-2',
-        clientId: 'client-1',
-        taskName: 'Internal Sync Meeting',
-        hours: 2.0,
-        rate: 60.0,
-        isBillable: false,
-        date: DateTime.now(),
-        createdAt: DateTime.now(),
-      );
+  setUp(() {
+    db = AppDatabase(NativeDatabase.memory());
+    clientDao = ClientDao(db);
+    timeEntryDao = TimeEntryDao(db);
+    invoiceDao = InvoiceDao(db);
+  });
 
-      final entries = [entry1, entry2];
+  tearDown(() async {
+    await db.close();
+  });
 
-      final billableEntries = entries.where((e) => e.isBillable).toList();
-      final totalBillableAmount = billableEntries.fold(0.0, (sum, e) => sum + (e.hours * e.rate));
+  test('Time Tracker & Billing Unit Tests Calculates total billable amount accurately for time entries', () async {
+    final client = Client(
+      id: 'client-1',
+      name: 'Acme Corp',
+      email: 'acme@example.com',
+      createdAt: DateTime.now(),
+    );
+    await clientDao.insert(client);
 
-      expect(billableEntries.length, 1);
-      expect(totalBillableAmount, 330.0);
-    });
+    final entry1 = TimeEntry(
+      id: 'time-1',
+      clientId: 'client-1',
+      taskName: 'UI Design',
+      description: 'Mobile layout design',
+      date: DateTime.now(),
+      hours: 5.5,
+      rate: 80.0,
+      isBillable: true,
+      isInvoiced: false,
+      createdAt: DateTime.now(),
+    );
+    await timeEntryDao.insert(entry1);
+
+    final fetched = await timeEntryDao.getById('time-1');
+    expect(fetched, isNotNull);
+    expect(fetched!.taskName, equals('UI Design'));
+    expect(fetched.hours * fetched.rate, equals(440.0));
+    expect(fetched.isInvoiced, isFalse);
+
+    // Update time entry to invoiced
+    final updated = fetched.copyWith(isInvoiced: true);
+    await timeEntryDao.update(updated);
+
+    final refetched = await timeEntryDao.getById('time-1');
+    expect(refetched!.isInvoiced, isTrue);
+
+    // Delete time entry
+    await timeEntryDao.delete('time-1');
+    final deleted = await timeEntryDao.getById('time-1');
+    expect(deleted, isNull);
   });
 }

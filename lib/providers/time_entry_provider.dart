@@ -23,6 +23,10 @@ class TimeEntryNotifier extends Notifier<List<TimeEntry>> {
     }
   }
 
+  Future<void> refresh() async {
+    await _load();
+  }
+
   Future<void> addTimeEntry(TimeEntry entry) async {
     try {
       await ref.read(timeEntryDaoProvider).insert(entry);
