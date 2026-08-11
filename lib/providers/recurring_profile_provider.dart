@@ -11,6 +11,8 @@ final recurringProfilesProvider = NotifierProvider<RecurringProfileNotifier, Lis
 });
 
 class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
+  bool _isChecking = false;
+
   @override
   List<RecurringProfile> build() {
     _load();
@@ -21,7 +23,6 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
     try {
       final profiles = await ref.read(recurringProfileDaoProvider).getAll();
       state = profiles;
-      await checkAndGenerateInvoices();
     } catch (e) {
       debugPrint('Error loading recurring profiles: $e');
     }
@@ -60,6 +61,8 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
   }
 
   Future<int> checkAndGenerateInvoices() async {
+    if (_isChecking) return 0;
+    _isChecking = true;
     try {
       final nowRaw = DateTime.now();
       final todayDate = _stripTime(nowRaw);
@@ -95,24 +98,35 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
                 break;
               }
 
-              final uniqueSuffix = '${nextDate.year}${nextDate.month.toString().padLeft(2, '0')}${nextDate.day.toString().padLeft(2, '0')}';
-              final invoiceNum = 'REC-$uniqueSuffix-${const Uuid().v4().substring(0, 4).toUpperCase()}';
-
-              final newInvoice = Invoice(
-                id: const Uuid().v4(),
-                clientId: profile.clientId,
-                invoiceNumber: invoiceNum,
-                issueDate: nextDate,
-                dueDate: nextDate.add(const Duration(days: 14)),
-                subTotal: profile.amount,
-                taxTotal: 0,
-                totalAmount: profile.amount,
-                status: 'Draft',
-                items: [
-                  InvoiceItem(description: profile.description, quantity: 1, rate: profile.amount, taxPercent: 0, taxAmount: 0, total: profile.amount)
-                ],
+              // Verify if an invoice for this client, issueDate, and description was already created
+              final existingInvoices = await ref.read(invoiceDaoProvider).getAll();
+              final alreadyGenerated = existingInvoices.any((i) =>
+                i.clientId == profile.clientId &&
+                _stripTime(i.issueDate).isAtSameMomentAs(nextDate) &&
+                (i.subTotal - profile.amount).abs() < 0.01 &&
+                i.items.any((item) => item.description == profile.description)
               );
-              generatedInvoices.add(newInvoice);
+
+              if (!alreadyGenerated) {
+                final uniqueSuffix = '${nextDate.year}${nextDate.month.toString().padLeft(2, '0')}${nextDate.day.toString().padLeft(2, '0')}';
+                final invoiceNum = 'REC-$uniqueSuffix-${const Uuid().v4().substring(0, 4).toUpperCase()}';
+
+                final newInvoice = Invoice(
+                  id: const Uuid().v4(),
+                  clientId: profile.clientId,
+                  invoiceNumber: invoiceNum,
+                  issueDate: nextDate,
+                  dueDate: nextDate.add(const Duration(days: 14)),
+                  subTotal: profile.amount,
+                  taxTotal: 0,
+                  totalAmount: profile.amount,
+                  status: 'Draft',
+                  items: [
+                    InvoiceItem(description: profile.description, quantity: 1, rate: profile.amount, taxPercent: 0, taxAmount: 0, total: profile.amount)
+                  ],
+                );
+                generatedInvoices.add(newInvoice);
+              }
 
               nextDate = _getNextDateForFrequency(nextDate, profile.frequency);
             }
@@ -144,6 +158,8 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
     } catch (e) {
       debugPrint('Error checking/generating recurring invoices: $e');
       rethrow;
+    } finally {
+      _isChecking = false;
     }
   }
 
