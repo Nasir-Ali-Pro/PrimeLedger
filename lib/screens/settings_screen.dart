@@ -142,10 +142,141 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _exportBackup(BuildContext context) async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.backup, color: Color(0xFF10B981), size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('Export Backup Data', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Select your preferred export method for your PrimeLedger database backup:',
+                style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                tileColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.save_alt, color: Color(0xFF10B981)),
+                ),
+                title: const Text('Save to Local Storage / Downloads', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Save .json file directly to device storage or Downloads folder', style: TextStyle(fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _saveBackupToLocalStorage(context);
+                },
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                tileColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.share, color: Color(0xFF6366F1)),
+                ),
+                title: const Text('Share / Cloud Storage', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Send via WhatsApp, Email, Google Drive, or Bluetooth', style: TextStyle(fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _shareBackupFile(context);
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _saveBackupToLocalStorage(BuildContext context) async {
     try {
       final db = ref.read(databaseProvider);
       final jsonString = await db.exportBackup();
-      
+      final timeStamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'primeledger_backup_$timeStamp.json';
+
+      String? savePath;
+
+      try {
+        savePath = await FilePicker.platform.saveFile(
+          dialogTitle: 'Save PrimeLedger Backup',
+          fileName: fileName,
+          bytes: utf8.encode(jsonString),
+        );
+      } catch (e) {
+        debugPrint('FilePicker saveFile fallback: $e');
+      }
+
+      if (savePath == null) {
+        Directory? dir;
+        if (Platform.isAndroid) {
+          final downloadsDir = Directory('/storage/emulated/0/Download');
+          if (downloadsDir.existsSync()) {
+            dir = downloadsDir;
+          } else {
+            dir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+          }
+        } else {
+          dir = await getApplicationDocumentsDirectory();
+        }
+
+        final targetFile = File('${dir.path}/$fileName');
+        await targetFile.writeAsString(jsonString);
+        savePath = targetFile.path;
+      }
+
+      if (context.mounted) {
+        AppErrorHandler.showSuccessSnackBar(
+          context,
+          'Backup file saved to local storage:\n$savePath',
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        AppErrorHandler.showErrorSnackBar(context, e, prefix: 'Local export failed');
+      }
+    }
+  }
+
+  Future<void> _shareBackupFile(BuildContext context) async {
+    try {
+      final db = ref.read(databaseProvider);
+      final jsonString = await db.exportBackup();
+
       final tempDir = await getTemporaryDirectory();
       final backupFile = File('${tempDir.path}/primeledger_backup_${DateTime.now().millisecondsSinceEpoch}.json');
       await backupFile.writeAsString(jsonString);

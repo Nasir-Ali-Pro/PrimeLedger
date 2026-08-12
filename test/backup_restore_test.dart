@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -69,7 +70,7 @@ void main() {
   });
 
   test('Imports actual user exported backup JSON without errors', () async {
-    final file = SystemFile('primeledger_fyp_thesis_backup.json');
+    final file = File('primeledger_fyp_thesis_backup.json');
     if (file.existsSync()) {
       final userJson = file.readAsStringSync();
       await db.importBackup(userJson);
