@@ -21,7 +21,6 @@ import '../providers/purchase_order_provider.dart';
 import '../providers/time_entry_provider.dart';
 import '../providers/recurring_profile_provider.dart';
 import '../database/database_provider.dart';
-import '../services/fyp_seed_service.dart';
 import '../utils/error_handler.dart';
 import 'package:go_router/go_router.dart';
 
@@ -573,40 +572,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         title: const Text('Import Backup', style: TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: Text('Restore database from a previously saved backup file', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
                         onTap: () => _importBackup(context),
-                      ),
-                      const Divider(),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.school, color: Color(0xFFF59E0B), size: 24),
-                        ),
-                        title: const Text('Load Thesis Demo Data', style: TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text('Populate sample clients (Shahid Khan, Haider Ali, Raja Ali - Swat) for FYP screenshots', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
-                        onTap: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              title: const Text('Load FYP Demo Data?'),
-                              content: const Text('This will populate rich sample data for Shahid Khan, Haider Ali, Raja Ali, products, invoices, and expenses for your thesis screenshots.'),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text('Load Demo Data', style: TextStyle(fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm == true && context.mounted) {
-                            await FypSeedService.seedFypThesisData(ref, context);
-                          }
-                        },
                       ),
                       const Divider(),
                       ListTile(
