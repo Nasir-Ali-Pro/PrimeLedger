@@ -423,6 +423,118 @@ class AppDatabase extends _$AppDatabase {
     return jsonEncode(backup);
   }
 
+  Map<String, dynamic> _sanitizeItem(String table, Map<String, dynamic> raw) {
+    final map = Map<String, dynamic>.from(raw);
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+    switch (table) {
+      case 'clients':
+        map['createdAt'] ??= nowMs;
+        map['paymentTermsDays'] ??= 14;
+        map['creditLimit'] ??= 0.0;
+        break;
+      case 'suppliers':
+        map['createdAt'] ??= nowMs;
+        break;
+      case 'products':
+        map['costPrice'] ??= map['cost_price'] ?? 0.0;
+        map['sellingPrice'] ??= map['selling_price'] ?? 0.0;
+        map['quantity'] ??= 0;
+        map['reorderLevel'] ??= map['reorder_level'] ?? 10;
+        map['unit'] ??= 'pcs';
+        map['category'] ??= 'General';
+        map['createdAt'] ??= nowMs;
+        map['updatedAt'] ??= nowMs;
+        break;
+      case 'invoices':
+        map['discountPercent'] ??= 0.0;
+        map['discountAmount'] ??= 0.0;
+        map['withholdingTaxPercent'] ??= 0.0;
+        map['withholdingTaxAmount'] ??= 0.0;
+        map['tax2Percent'] ??= 0.0;
+        map['subTotal'] ??= 0.0;
+        map['taxTotal'] ??= 0.0;
+        map['totalAmount'] ??= 0.0;
+        map['status'] ??= 'Draft';
+        map['createdAt'] ??= nowMs;
+        break;
+      case 'invoiceItems':
+        map['quantity'] ??= 1;
+        map['rate'] ??= 0.0;
+        map['taxPercent'] ??= 0.0;
+        map['taxAmount'] ??= 0.0;
+        map['total'] ??= 0.0;
+        map['discountPercent'] ??= 0.0;
+        break;
+      case 'estimates':
+        map['discountPercent'] ??= 0.0;
+        map['discountAmount'] ??= 0.0;
+        map['withholdingTaxPercent'] ??= 0.0;
+        map['withholdingTaxAmount'] ??= 0.0;
+        map['tax2Percent'] ??= 0.0;
+        map['subTotal'] ??= 0.0;
+        map['taxTotal'] ??= 0.0;
+        map['totalAmount'] ??= 0.0;
+        map['status'] ??= 'Draft';
+        map['createdAt'] ??= nowMs;
+        break;
+      case 'estimateItems':
+        map['quantity'] ??= 1;
+        map['rate'] ??= 0.0;
+        map['taxPercent'] ??= 0.0;
+        map['taxAmount'] ??= 0.0;
+        map['total'] ??= 0.0;
+        map['discountPercent'] ??= 0.0;
+        break;
+      case 'expenses':
+        map['category'] ??= 'General';
+        map['amount'] ??= 0.0;
+        map['isBillable'] ??= false;
+        map['markupPercent'] ??= 0.0;
+        map['createdAt'] ??= nowMs;
+        break;
+      case 'payments':
+        map['amount'] ??= 0.0;
+        map['paymentMethod'] ??= 'Cash';
+        map['createdAt'] ??= nowMs;
+        break;
+      case 'purchaseOrders':
+        map['subTotal'] ??= 0.0;
+        map['taxTotal'] ??= 0.0;
+        map['totalAmount'] ??= 0.0;
+        map['status'] ??= 'Draft';
+        map['createdAt'] ??= nowMs;
+        break;
+      case 'poItems':
+        map['quantity'] ??= 1;
+        map['receivedQuantity'] ??= 0;
+        map['unitPrice'] ??= 0.0;
+        map['taxPercent'] ??= 0.0;
+        map['taxAmount'] ??= 0.0;
+        map['total'] ??= 0.0;
+        break;
+      case 'supplierPayments':
+        map['amount'] ??= 0.0;
+        map['paymentMethod'] ??= 'Cash';
+        map['createdAt'] ??= nowMs;
+        break;
+      case 'timeEntries':
+        map['hours'] ??= 0.0;
+        map['rate'] ??= 0.0;
+        map['isBillable'] ??= true;
+        map['isInvoiced'] ??= false;
+        map['createdAt'] ??= nowMs;
+        break;
+      case 'recurringProfiles':
+        map['amount'] ??= 0.0;
+        map['frequency'] ??= 'Monthly';
+        map['isActive'] ??= true;
+        map['createdAt'] ??= nowMs;
+        break;
+    }
+    return map;
+  }
+
   Future<void> importBackup(String backupJson) async {
     final Map<String, dynamic> backup = jsonDecode(backupJson);
 
@@ -435,86 +547,100 @@ class AppDatabase extends _$AppDatabase {
       // Top-level parents
       if (backup['appSettings'] != null) {
         for (final item in backup['appSettings']) {
-          await into(appSettingsTbl).insert(AppSettingsTblData.fromJson(item));
+          await into(appSettingsTbl).insert(AppSettingsTblData.fromJson(item as Map<String, dynamic>));
         }
       }
       if (backup['clients'] != null) {
         for (final item in backup['clients']) {
-          await into(clientsTbl).insert(ClientsTblData.fromJson(item));
+          final s = _sanitizeItem('clients', item as Map<String, dynamic>);
+          await into(clientsTbl).insert(ClientsTblData.fromJson(s));
         }
       }
       if (backup['suppliers'] != null) {
         for (final item in backup['suppliers']) {
-          await into(suppliersTbl).insert(SuppliersTblData.fromJson(item));
+          final s = _sanitizeItem('suppliers', item as Map<String, dynamic>);
+          await into(suppliersTbl).insert(SuppliersTblData.fromJson(s));
         }
       }
       if (backup['products'] != null) {
         for (final item in backup['products']) {
-          await into(productsTbl).insert(ProductsTblData.fromJson(item));
+          final s = _sanitizeItem('products', item as Map<String, dynamic>);
+          await into(productsTbl).insert(ProductsTblData.fromJson(s));
         }
       }
 
       // First-level children
       if (backup['invoices'] != null) {
         for (final item in backup['invoices']) {
-          await into(invoicesTbl).insert(InvoicesTblData.fromJson(item));
+          final s = _sanitizeItem('invoices', item as Map<String, dynamic>);
+          await into(invoicesTbl).insert(InvoicesTblData.fromJson(s));
         }
       }
       if (backup['estimates'] != null) {
         for (final item in backup['estimates']) {
-          await into(estimatesTbl).insert(EstimatesTblData.fromJson(item));
+          final s = _sanitizeItem('estimates', item as Map<String, dynamic>);
+          await into(estimatesTbl).insert(EstimatesTblData.fromJson(s));
         }
       }
       if (backup['purchaseOrders'] != null) {
         for (final item in backup['purchaseOrders']) {
-          await into(purchaseOrdersTbl).insert(PurchaseOrdersTblData.fromJson(item));
+          final s = _sanitizeItem('purchaseOrders', item as Map<String, dynamic>);
+          await into(purchaseOrdersTbl).insert(PurchaseOrdersTblData.fromJson(s));
         }
       }
       if (backup['expenses'] != null) {
         for (final item in backup['expenses']) {
-          await into(expensesTbl).insert(ExpensesTblData.fromJson(item));
+          final s = _sanitizeItem('expenses', item as Map<String, dynamic>);
+          await into(expensesTbl).insert(ExpensesTblData.fromJson(s));
         }
       }
       if (backup['timeEntries'] != null) {
         for (final item in backup['timeEntries']) {
-          await into(timeEntriesTbl).insert(TimeEntriesTblData.fromJson(item));
+          final s = _sanitizeItem('timeEntries', item as Map<String, dynamic>);
+          await into(timeEntriesTbl).insert(TimeEntriesTblData.fromJson(s));
         }
       }
       if (backup['recurringProfiles'] != null) {
         for (final item in backup['recurringProfiles']) {
-          await into(recurringProfilesTbl).insert(RecurringProfilesTblData.fromJson(item));
+          final s = _sanitizeItem('recurringProfiles', item as Map<String, dynamic>);
+          await into(recurringProfilesTbl).insert(RecurringProfilesTblData.fromJson(s));
         }
       }
       if (backup['stockMovements'] != null) {
         for (final item in backup['stockMovements']) {
-          await into(stockMovementsTbl).insert(StockMovementsTblData.fromJson(item));
+          await into(stockMovementsTbl).insert(StockMovementsTblData.fromJson(item as Map<String, dynamic>));
         }
       }
 
       // Second-level children
       if (backup['invoiceItems'] != null) {
         for (final item in backup['invoiceItems']) {
-          await into(invoiceItemsTbl).insert(InvoiceItemsTblData.fromJson(item));
+          final s = _sanitizeItem('invoiceItems', item as Map<String, dynamic>);
+          await into(invoiceItemsTbl).insert(InvoiceItemsTblData.fromJson(s));
         }
       }
       if (backup['estimateItems'] != null) {
         for (final item in backup['estimateItems']) {
-          await into(estimateItemsTbl).insert(EstimateItemsTblData.fromJson(item));
+          final s = _sanitizeItem('estimateItems', item as Map<String, dynamic>);
+          await into(estimateItemsTbl).insert(EstimateItemsTblData.fromJson(s));
         }
       }
       if (backup['poItems'] != null) {
         for (final item in backup['poItems']) {
-          await into(poItemsTbl).insert(PoItemsTblData.fromJson(item));
+          final s = _sanitizeItem('poItems', item as Map<String, dynamic>);
+          await into(poItemsTbl).insert(PoItemsTblData.fromJson(s));
         }
       }
       if (backup['payments'] != null) {
         for (final item in backup['payments']) {
-          await into(paymentsTbl).insert(PaymentsTblData.fromJson(item));
+          final s = _sanitizeItem('payments', item as Map<String, dynamic>);
+          await into(paymentsTbl).insert(PaymentsTblData.fromJson(s));
         }
       }
       if (backup['supplierPayments'] != null) {
         for (final item in backup['supplierPayments']) {
-          await into(supplierPaymentsTbl).insert(SupplierPaymentsTblData.fromJson(item));
+          final s = _sanitizeItem('supplierPayments', item as Map<String, dynamic>);
+          await into(supplierPaymentsTbl).insert(SupplierPaymentsTblData.fromJson(s));
         }
       }
     });
