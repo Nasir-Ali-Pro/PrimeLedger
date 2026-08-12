@@ -506,8 +506,9 @@ class AppDatabase extends _$AppDatabase {
         map['createdAt'] ??= nowMs;
         break;
       case 'poItems':
+        map['description'] ??= '';
         map['quantity'] ??= 1;
-        map['receivedQuantity'] ??= 0;
+        map['receivedQty'] ??= map['receivedQuantity'] ?? 0;
         map['unitPrice'] ??= 0.0;
         map['taxPercent'] ??= 0.0;
         map['taxAmount'] ??= 0.0;

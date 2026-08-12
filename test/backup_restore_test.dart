@@ -67,4 +67,18 @@ void main() {
     expect(clientsAfter.length, 1);
     expect(clientsAfter.first.name, 'John Doe');
   });
+
+  test('Imports actual user exported backup JSON without errors', () async {
+    final file = SystemFile('primeledger_fyp_thesis_backup.json');
+    if (file.existsSync()) {
+      final userJson = file.readAsStringSync();
+      await db.importBackup(userJson);
+
+      final clients = await db.select(db.clientsTbl).get();
+      expect(clients.isNotEmpty, true);
+
+      final invoices = await db.select(db.invoicesTbl).get();
+      expect(invoices.isNotEmpty, true);
+    }
+  });
 }
