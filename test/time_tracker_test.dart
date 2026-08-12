@@ -3,22 +3,18 @@ import 'package:drift/native.dart';
 import 'package:prime_ledger/database/database.dart';
 import 'package:prime_ledger/database/daos/client_dao.dart';
 import 'package:prime_ledger/database/daos/time_entry_dao.dart';
-import 'package:prime_ledger/database/daos/invoice_dao.dart';
 import 'package:prime_ledger/models/client.dart';
 import 'package:prime_ledger/models/time_entry.dart';
-import 'package:prime_ledger/models/invoice.dart';
 
 void main() {
   late AppDatabase db;
   late ClientDao clientDao;
   late TimeEntryDao timeEntryDao;
-  late InvoiceDao invoiceDao;
 
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
     clientDao = ClientDao(db);
     timeEntryDao = TimeEntryDao(db);
-    invoiceDao = InvoiceDao(db);
   });
 
   tearDown(() async {

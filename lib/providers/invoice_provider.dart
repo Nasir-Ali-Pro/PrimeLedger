@@ -87,7 +87,7 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
 
       await _load();
       await ref.read(expensesProvider.notifier).refresh();
-      await ref.read(timeEntriesProvider.notifier).build();
+      await ref.read(timeEntriesProvider.notifier).refresh();
       await ref.read(paymentsProvider.notifier).refresh();
       await ref.read(productsProvider.notifier).refresh();
     } catch (e) {
@@ -184,7 +184,7 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
 
       await _load();
       await ref.read(expensesProvider.notifier).refresh();
-      await ref.read(timeEntriesProvider.notifier).build();
+      await ref.read(timeEntriesProvider.notifier).refresh();
       await ref.read(paymentsProvider.notifier).refresh();
       await ref.read(productsProvider.notifier).refresh();
     } catch (e) {
@@ -224,7 +224,7 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
       await ref.read(invoiceDaoProvider).delete(id);
       await _load();
       await ref.read(expensesProvider.notifier).refresh();
-      await ref.read(timeEntriesProvider.notifier).build();
+      await ref.read(timeEntriesProvider.notifier).refresh();
       await ref.read(productsProvider.notifier).refresh();
       await ref.read(paymentsProvider.notifier).refresh();
     } catch (e) {

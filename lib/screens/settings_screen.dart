@@ -164,6 +164,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  ImageProvider? _getLogoImageProvider(String? logoStr) {
+    if (logoStr == null || logoStr.trim().isEmpty) return null;
+    try {
+      final file = File(logoStr);
+      if (file.existsSync()) {
+        return FileImage(file);
+      }
+      final clean = logoStr.contains(',') ? logoStr.split(',').last : logoStr;
+      return MemoryImage(base64Decode(clean.trim()));
+    } catch (e) {
+      debugPrint('Error resolving company logo image: $e');
+      return null;
+    }
+  }
+
   Future<void> _importBackup(BuildContext context) async {
     try {
       final confirmed = await showDialog<bool>(
@@ -212,7 +227,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ref.invalidate(recurringProfilesProvider);
       ref.invalidate(settingsProvider);
 
+      final newSettings = await ref.read(settingsDaoProvider).getSettings();
       if (context.mounted) {
+        setState(() {
+          _nameController.text = newSettings.companyName;
+          _addressController.text = newSettings.companyAddress;
+          _emailController.text = newSettings.companyEmail;
+          _phoneController.text = newSettings.companyPhone ?? '';
+          _currencyController.text = newSettings.currencySymbol;
+          _markupController.text = newSettings.productMarkupPercent.toStringAsFixed(0);
+          _taxPercentController.text = newSettings.defaultTaxPercent.toString();
+          _taxRegController.text = newSettings.taxRegistrationNumber ?? '';
+          _prefixController.text = newSettings.invoicePrefix;
+          _bankDetailsController.text = newSettings.bankDetails ?? '';
+          _paymentTermsController.text = newSettings.defaultPaymentTermsDays.toString();
+          _logoBase64 = newSettings.companyLogoBase64;
+          _numberFormat = newSettings.numberFormat;
+        });
         AppErrorHandler.showSuccessSnackBar(context, 'Backup imported successfully!');
       }
     } catch (e) {
@@ -226,6 +257,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeMode = ref.watch(themeModeProvider);
+    final logoProvider = _getLogoImageProvider(_logoBase64);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -336,12 +368,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             child: CircleAvatar(
                               radius: 40,
                               backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                              backgroundImage: _logoBase64 != null
-                                  ? (File(_logoBase64!).existsSync()
-                                      ? FileImage(File(_logoBase64!))
-                                      : MemoryImage(base64Decode(_logoBase64!))) as ImageProvider
-                                  : null,
-                              child: _logoBase64 == null ? const Icon(Icons.add_a_photo, size: 32) : null,
+                              backgroundImage: logoProvider,
+                              child: logoProvider == null ? const Icon(Icons.add_a_photo, size: 32) : null,
                             ),
                           ),
                         ),
