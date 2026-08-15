@@ -106,7 +106,12 @@ class AppSettings {
   }
 
   String formatCurrency(double value) {
-    return '$currencySymbol${formatNumber(value)}';
+    final sym = currencySymbol.trim();
+    if (sym.isEmpty) return formatNumber(value);
+    if (value < 0) {
+      return '-$sym ${formatNumber(value.abs())}';
+    }
+    return '$sym ${formatNumber(value)}';
   }
 
   static String _formatLakhs(double value) {

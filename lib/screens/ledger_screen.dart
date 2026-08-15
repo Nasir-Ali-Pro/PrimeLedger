@@ -61,7 +61,15 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(appBarTitle),
+        titleSpacing: 12,
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            appBarTitle,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
         actions: [
           if (filter.startDate != null || filter.endDate != null || filter.typeFilter != null || filter.searchQuery.isNotEmpty || filter.clientId != null || filter.supplierId != null || filter.sortOrder != LedgerSortOrder.recent)
             IconButton(

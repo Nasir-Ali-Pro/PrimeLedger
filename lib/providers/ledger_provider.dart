@@ -322,7 +322,7 @@ List<LedgerEntry> buildLedgerEntries({
       }
       currentBalance = generalSingleRunning;
     } else if (filter.supplierId != null) {
-      if (entry.type == LedgerEntryType.purchaseOrder) {
+      if (entry.type == LedgerEntryType.purchaseOrder && (entry.status == 'Received' || entry.status == 'Partially Received')) {
         generalSingleRunning += entry.credit;
       } else if (entry.type == LedgerEntryType.supplierPayment) {
         generalSingleRunning -= entry.debit;
@@ -334,9 +334,13 @@ List<LedgerEntry> buildLedgerEntries({
       if (entry.type == LedgerEntryType.purchaseOrder) {
         final key = cpId ?? 'default_supplier';
         final prev = supplierBalances[key] ?? 0;
-        final updated = prev + entry.credit;
-        supplierBalances[key] = updated;
-        currentBalance = updated;
+        if (entry.status == 'Received' || entry.status == 'Partially Received') {
+          final updated = prev + entry.credit;
+          supplierBalances[key] = updated;
+          currentBalance = updated;
+        } else {
+          currentBalance = prev;
+        }
       } else if (entry.type == LedgerEntryType.supplierPayment) {
         final key = cpId ?? 'default_supplier';
         final prev = supplierBalances[key] ?? 0;
@@ -365,6 +369,10 @@ List<LedgerEntry> buildLedgerEntries({
           generalSingleRunning += entry.debit - entry.credit;
           currentBalance = generalSingleRunning;
         }
+      } else if (entry.type == LedgerEntryType.estimate) {
+        // Estimates do not alter accounting balances (non-posting entries)
+        final key = cpId ?? 'default_client';
+        currentBalance = clientBalances[key] ?? 0;
       } else {
         generalSingleRunning += entry.debit - entry.credit;
         currentBalance = generalSingleRunning;
