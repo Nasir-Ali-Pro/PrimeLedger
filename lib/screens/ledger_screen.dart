@@ -206,7 +206,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         _CardData('Outstanding Dues', dues, Icons.pending_actions, const [Color(0xFFF59E0B), Color(0xFFD97706)]),
       ]);
     } else if (filter.supplierId != null) {
-      final supplierPos = pos.where((po) => po.supplierId == filter.supplierId && po.status != 'Draft' && po.status != 'Cancelled').toList();
+      final supplierPos = pos.where((po) => po.supplierId == filter.supplierId && (po.status == 'Received' || po.status == 'Partially Received')).toList();
       final totalPurchased = supplierPos.fold(0.0, (s, po) => s + po.totalAmount);
       final supplierPaymentsList = ref.watch(supplierPaymentsProvider).where((sp) => sp.supplierId == filter.supplierId).toList();
       final totalPaid = supplierPaymentsList.fold(0.0, (s, sp) => s + sp.amount);
@@ -234,7 +234,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       }).fold(0.0, (s, e) => s + e.amount * (1 + e.markupPercent / 100));
       final clientOutstanding = totalRevenueGross + totalUnbilledExpenses - totalCollected;
 
-      final validPos = pos.where((po) => po.status != 'Draft' && po.status != 'Cancelled').toList();
+      final validPos = pos.where((po) => po.status == 'Received' || po.status == 'Partially Received').toList();
       final totalPurchases = validPos.fold(0.0, (s, po) => s + po.totalAmount);
       final totalSupplierPaid = ref.watch(supplierPaymentsProvider).fold(0.0, (s, sp) => s + sp.amount);
       final supplierOutstanding = totalPurchases - totalSupplierPaid;
@@ -743,10 +743,16 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                       child: Text(entry.status, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: statusColor)),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      _fmt(entry.balance, settings),
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
-                    ),
+                    if (entry.type == LedgerEntryType.estimate)
+                      Text(
+                        'Quote',
+                        style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                      )
+                    else
+                      Text(
+                        _fmt(entry.balance, settings),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
+                      ),
                   ],
                 ),
               ),
