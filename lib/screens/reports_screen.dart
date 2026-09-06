@@ -5,6 +5,7 @@ import '../providers/expense_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/client_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/purchase_order_provider.dart';
 import '../services/pdf_service.dart';
 
 class ReportsScreen extends ConsumerWidget {
@@ -170,17 +171,24 @@ class ReportsScreen extends ConsumerWidget {
 
   Future<void> _generateTaxReport(BuildContext context, WidgetRef ref) async {
     final invoices = ref.read(invoicesProvider);
+    final pos = ref.read(purchaseOrdersProvider);
     final settings = ref.read(settingsProvider);
     
     final validInvoices = invoices.where((i) => i.status != 'Draft' && i.status != 'Cancelled').toList();
     final taxCollected = validInvoices.fold(0.0, (sum, i) => sum + i.taxTotal);
 
-    final headers = ['Tax Category', 'Amount'];
+    final validPos = pos.where((p) => p.status == 'Received' || p.status == 'Partially Received').toList();
+    final taxPaid = validPos.fold(0.0, (sum, p) => sum + p.taxTotal);
+    final netTaxPayable = taxCollected - taxPaid;
+
+    final headers = ['Tax Category Description', 'Amount'];
     final data = [
-      ['Total Tax Collected (Sales)', settings.formatCurrency(taxCollected)],
+      ['Output Sales Tax Collected (Invoices)', settings.formatCurrency(taxCollected)],
+      ['Input Purchase Tax Paid (Purchase Orders)', settings.formatCurrency(taxPaid)],
+      ['Net Tax Payable / (Refund Credit)', settings.formatCurrency(netTaxPayable)],
     ];
 
-    await PdfService.generateReportPdf('Tax Summary', headers, data, settings);
+    await PdfService.generateReportPdf('Tax Summary Report', headers, data, settings);
   }
 
   Future<void> _exportClients(BuildContext context, WidgetRef ref) async {
