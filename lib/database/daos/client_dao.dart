@@ -49,7 +49,6 @@ class ClientDao {
   Future<void> delete(String id) async {
     try {
       await _db.transaction(() async {
-        // Check if there are any dependent records
         final invoiceCount = await (_db.select(_db.invoicesTbl)..where((t) => t.clientId.equals(id))).get();
         final paymentCount = await (_db.select(_db.paymentsTbl)..where((t) => t.clientId.equals(id))).get();
         final estimateCount = await (_db.select(_db.estimatesTbl)..where((t) => t.clientId.equals(id))).get();
@@ -72,7 +71,6 @@ class ClientDao {
           );
         }
 
-        // Delete the client itself
         await (_db.delete(_db.clientsTbl)..where((t) => t.id.equals(id))).go();
       });
     } catch (e) {

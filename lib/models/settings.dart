@@ -5,7 +5,7 @@ class AppSettings {
   final String? companyPhone;
   final String currencySymbol;
   final String? companyLogoBase64;
-  final String numberFormat; // 'millions' or 'lakhs'
+  final String numberFormat;
   final double productMarkupPercent;
   final double defaultTaxPercent;
   final String? taxRegistrationNumber;

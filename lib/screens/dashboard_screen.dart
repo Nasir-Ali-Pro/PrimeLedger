@@ -162,7 +162,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with WidgetsB
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome
             Text('Overview', style: theme.textTheme.titleLarge?.copyWith(fontSize: 28)),
             const SizedBox(height: 20),
             LayoutBuilder(
@@ -187,7 +186,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with WidgetsB
               }
             ),
             const SizedBox(height: 24),
-            // Quick Stats Row
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -200,10 +198,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with WidgetsB
               ],
             ),
             const SizedBox(height: 24),
-            // Chart
             _buildChartSection(theme, invoices, settings, payments),
             const SizedBox(height: 24),
-            // Recent Invoices
             _buildRecentActivity(context, invoices, clientMap, settings, theme),
           ],
         ),
@@ -274,10 +270,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> with WidgetsB
       dailyRevenue[6 - i] = paymentSum > 0 ? paymentSum : invoiceSum;
     }
 
-    // Check if 7-day window is all zeros due to historic dates
     double total7Day = dailyRevenue.fold(0.0, (sum, r) => sum + r);
     if (total7Day == 0 && invoices.isNotEmpty) {
-      // Intelligently group recent active invoices across recent days for thesis visualization
       final validInvoices = invoices.where((i) => i.status != 'Draft' && i.status != 'Cancelled').toList();
       validInvoices.sort((a, b) => a.issueDate.compareTo(b.issueDate));
       for (int i = 0; i < validInvoices.length && i < 7; i++) {

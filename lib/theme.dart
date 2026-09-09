@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Brand Colors
   static const Color indigo = Color(0xFF6366F1);
   static const Color purple = Color(0xFF8B5CF6);
   static const Color emerald = Color(0xFF10B981);

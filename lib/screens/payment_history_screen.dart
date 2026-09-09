@@ -111,13 +111,11 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> wit
     final supplierMap = {for (final s in suppliers) s.id: s.name};
     final poMap = {for (final po in purchaseOrders) po.id: po.poNumber};
 
-    // Helpers
     String getClientName(String clientId) => clientMap[clientId] ?? 'Unknown Client';
     String getInvoiceNum(String invoiceId) => invoiceMap[invoiceId] ?? 'Unknown Invoice';
     String getSupplierName(String supplierId) => supplierMap[supplierId] ?? 'Unknown Supplier';
     String getPoNum(String poId) => poMap[poId] ?? 'Unknown PO';
 
-    // Filter Client Payments
     final filteredPayments = payments.where((p) {
       final clientName = getClientName(p.clientId).toLowerCase();
       final invoiceNum = getInvoiceNum(p.invoiceId).toLowerCase();
@@ -140,7 +138,6 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> wit
         return b.createdAt.compareTo(a.createdAt);
       });
 
-    // Filter Supplier Payments
     final filteredSupplierPayments = supplierPayments.where((p) {
       final supplierName = getSupplierName(p.supplierId).toLowerCase();
       final poNum = getPoNum(p.purchaseOrderId).toLowerCase();
@@ -163,7 +160,6 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> wit
         return b.createdAt.compareTo(a.createdAt);
       });
 
-    // Client Stats
     final totalReceived = filteredPayments.fold(0.0, (sum, p) => sum + p.amount);
     final easypaisaTotal = filteredPayments
         .where((p) => p.paymentMethod.toLowerCase() == 'easypaisa')
@@ -172,7 +168,6 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> wit
         .where((p) => p.paymentMethod.toLowerCase() == 'bank transfer')
         .fold(0.0, (sum, p) => sum + p.amount);
 
-    // Supplier Stats
     final totalPaidOut = filteredSupplierPayments.fold(0.0, (sum, p) => sum + p.amount);
     final supplierBankTotal = filteredSupplierPayments
         .where((p) => p.paymentMethod.toLowerCase() == 'bank transfer')
@@ -241,7 +236,6 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> wit
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Tab 1: Client Payments
           Column(
             children: [
               SingleChildScrollView(
@@ -471,7 +465,6 @@ class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> wit
             ],
           ),
 
-          // Tab 2: Supplier Payments
           Column(
             children: [
               SingleChildScrollView(

@@ -33,7 +33,6 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
   void initState() {
     super.initState();
     if (widget.id != null) {
-      // Need a post-frame callback to safely access ref and state
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final clients = ref.read(clientsProvider);
         try {
@@ -48,7 +47,6 @@ class _ClientFormScreenState extends ConsumerState<ClientFormScreen> {
           _creditLimitController.text = _existingClient!.creditLimit.toString();
           setState(() {});
         } catch (e) {
-          // Client not found
         }
       });
     }

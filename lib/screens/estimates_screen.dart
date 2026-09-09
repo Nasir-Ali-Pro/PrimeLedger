@@ -410,7 +410,6 @@ class _EstimatesScreenState extends ConsumerState<EstimatesScreen> {
       message: 'Delete estimate "${est.estimateNumber}"? This cannot be undone.',
     );
     if (confirmed == true) {
-      // ignore: use_build_context_synchronously
       LoadingOverlay.show(context, message: 'Deleting estimate...');
       try {
         await ref.read(estimatesProvider.notifier).deleteEstimate(est.id);

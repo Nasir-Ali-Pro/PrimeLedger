@@ -40,13 +40,11 @@ class PdfService {
           logoImage = pw.MemoryImage(base64Decode(settings.companyLogoBase64!));
         }
       } catch (e) {
-        // ignore
       }
     }
     try {
       logoImage ??= await imageFromAssetBundle('assets/images/prime_ledger_logo.png');
     } catch (e) {
-      // ignore
     }
 
     final List<dynamic> rawItems = invoiceData['items'] ?? [];
@@ -76,7 +74,6 @@ class PdfService {
         margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 40),
         build: (pw.Context context) {
           return [
-            // Invoice Header
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -134,7 +131,6 @@ class PdfService {
             pw.Divider(color: PdfColor.fromHex('#E5E7EB'), thickness: 1),
             pw.SizedBox(height: 20),
             
-            // Client details
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -151,7 +147,6 @@ class PdfService {
             ),
             pw.SizedBox(height: 28),
             
-            // Itemized Table
             pw.Table(
               border: const pw.TableBorder(
                 bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5),
@@ -226,7 +221,6 @@ class PdfService {
             ),
             pw.SizedBox(height: 24),
             
-            // Totals Summary
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.end,
               children: [

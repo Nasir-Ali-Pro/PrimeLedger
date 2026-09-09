@@ -251,7 +251,6 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
     setState(() {
       _importedExpenseIds.add(exp.id);
       
-      // If there is only one empty default line item, remove it
       if (lineItems.length == 1 &&
           lineItems[0]['description'] == '' &&
           lineItems[0]['price'] == 0.0 &&
@@ -1089,12 +1088,11 @@ class InvoiceFormScreenState extends ConsumerState<InvoiceFormScreen> {
                           ),
                         ],
                       ),
-                      // Withholding & Secondary Tax inputs removed per user request
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 200), // padding for bottom sheet
+              const SizedBox(height: 200),
             ],
           ),
         ),

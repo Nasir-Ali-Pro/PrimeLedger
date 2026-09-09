@@ -112,7 +112,6 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
   Future<void> _convertToInvoice() async {
     if (_existing == null) return;
 
-    // Stock availability check
     final products = ref.read(productsProvider);
     final warnings = <String>[];
     for (final item in _existing!.items) {
@@ -162,7 +161,6 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
 
     if (confirmed != true) return;
     
-    // ignore: use_build_context_synchronously
     LoadingOverlay.show(context, message: 'Converting & Updating Inventory...');
     try {
       final allInvoices = ref.read(invoicesProvider);
@@ -574,7 +572,7 @@ class _EstimateFormScreenState extends ConsumerState<EstimateFormScreen> {
                 maxLines: 3, 
                 decoration: const InputDecoration(labelText: 'Estimate Notes (Terms, etc.)', alignLabelWithHint: true),
               ),
-              const SizedBox(height: 280), // padding for bottom sheet
+              const SizedBox(height: 280),
             ],
           ),
         ),

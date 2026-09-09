@@ -169,7 +169,6 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
               const Text('Schedule & Range', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
 
-              // Start Date Picker Tile
               Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Theme.of(context).dividerColor)),
@@ -199,7 +198,6 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
                 ),
               ),
 
-              // End Date Picker Tile (Optional)
               Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Theme.of(context).dividerColor)),
@@ -235,7 +233,6 @@ class _RecurringProfileFormScreenState extends ConsumerState<RecurringProfileFor
                 ),
               ),
 
-              // Next Issue Date Tile
               Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Theme.of(context).dividerColor)),

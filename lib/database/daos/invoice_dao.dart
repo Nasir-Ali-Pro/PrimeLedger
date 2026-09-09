@@ -194,7 +194,6 @@ class InvoiceDao {
             }
           }
         }
-        // Manually delete child records first to prevent foreign key constraint violations
         await (_db.delete(_db.paymentsTbl)..where((t) => t.invoiceId.equals(id))).go();
         await (_db.delete(_db.invoiceItemsTbl)..where((t) => t.invoiceId.equals(id))).go();
         await (_db.delete(_db.invoicesTbl)..where((t) => t.id.equals(id))).go();

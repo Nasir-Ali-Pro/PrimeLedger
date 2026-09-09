@@ -73,9 +73,7 @@ class ProductDao {
           );
         }
 
-        // Delete associated stock movements
         await (_db.delete(_db.stockMovementsTbl)..where((t) => t.productId.equals(id))).go();
-        // Delete the product itself
         await (_db.delete(_db.productsTbl)..where((t) => t.id.equals(id))).go();
       });
     } catch (e) {

@@ -20,7 +20,7 @@ class TimeTrackerScreen extends ConsumerStatefulWidget {
 class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  String _filter = 'All'; // 'All', 'Billable', 'Invoiced'
+  String _filter = 'All';
 
   @override
   void dispose() {
@@ -182,7 +182,6 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen> {
       message: 'Delete time entry for "${entry.taskName}"? This cannot be undone.',
     );
     if (confirmed == true) {
-      // ignore: use_build_context_synchronously
       LoadingOverlay.show(context, message: 'Deleting...');
       try {
         await ref.read(timeEntriesProvider.notifier).deleteTimeEntry(entry.id);

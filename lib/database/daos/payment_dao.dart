@@ -133,7 +133,6 @@ class PaymentDao {
   Future<void> insert(Payment payment) async {
     try {
       await _db.transaction(() async {
-        // Verify payment won't exceed total client outstanding dues
         final invoiceRow = await (_db.select(_db.invoicesTbl)..where((t) => t.id.equals(payment.invoiceId))).getSingleOrNull();
         if (invoiceRow == null) {
           await _db.into(_db.paymentsTbl).insert(_toCompanion(payment));
@@ -171,7 +170,6 @@ class PaymentDao {
           throw Exception('Payment of ${payment.amount} would exceed total client outstanding dues of $totalClientDues. Already paid: $totalPaid, Total billed + expenses: ${totalBilled + billableExpenses}');
         }
 
-        // Optimize: Build a map of invoiceId -> totalPaid from clientPayments
         final paymentMap = <String, double>{};
         for (final p in clientPayments) {
           paymentMap[p.invoiceId] = (paymentMap[p.invoiceId] ?? 0.0) + p.amount;
@@ -181,14 +179,11 @@ class PaymentDao {
         final remainingTarget = (invoiceRow.totalAmount - totalPaidTarget).clamp(0.0, double.infinity);
 
         if (payment.amount <= remainingTarget + 0.01) {
-          // Normal insert
           await _db.into(_db.paymentsTbl).insert(_toCompanion(payment));
           await _syncInvoiceStatus(payment.invoiceId);
         } else {
-          // Excess payment to be allocated to other invoices
           double excess = payment.amount - remainingTarget;
           
-          // Insert payment up to remainingTarget on the target invoice
           if (remainingTarget > 0.01) {
             await _db.into(_db.paymentsTbl).insert(_toCompanion(payment.copyWith(
               amount: remainingTarget,
@@ -197,7 +192,6 @@ class PaymentDao {
             await _syncInvoiceStatus(payment.invoiceId);
           }
           
-          // Find other invoices of the client that are unpaid/partially paid, sorted by oldest first
           final otherInvoices = await (_db.select(_db.invoicesTbl)
             ..where((t) => t.clientId.equals(clientId) & t.id.equals(payment.invoiceId).not() & t.status.equals('Draft').not() & t.status.equals('Cancelled').not() & t.status.equals('Paid').not())
             ..orderBy([(t) => OrderingTerm(expression: t.issueDate, mode: OrderingMode.asc)])
@@ -228,11 +222,9 @@ class PaymentDao {
             }
           }
           
-          // If there is still excess left, add it to the target invoice as an overpayment
           if (excess > 0.01) {
             final overpaymentAmt = remainingTarget > 0.01 ? excess : payment.amount;
             if (remainingTarget > 0.01) {
-              // Add a second payment to target invoice representing the overpayment
               final overpaymentPmt = Payment(
                 id: const Uuid().v4(),
                 invoiceId: payment.invoiceId,
@@ -246,7 +238,6 @@ class PaymentDao {
               );
               await _db.into(_db.paymentsTbl).insert(_toCompanion(overpaymentPmt));
             } else {
-              // Target invoice remaining was 0, just insert the full overpayment
               await _db.into(_db.paymentsTbl).insert(_toCompanion(payment));
             }
             await _syncInvoiceStatus(payment.invoiceId);
@@ -262,11 +253,9 @@ class PaymentDao {
   Future<void> update(Payment payment) async {
     try {
       await _db.transaction(() async {
-        // Find the old payment record to check if invoiceId was changed
         final oldPayment = await (_db.select(_db.paymentsTbl)..where((t) => t.id.equals(payment.id))).getSingleOrNull();
         final String? oldInvoiceId = oldPayment?.invoiceId;
 
-        // Verify payment won't exceed the target client outstanding dues
         final invoiceRow = await (_db.select(_db.invoicesTbl)..where((t) => t.id.equals(payment.invoiceId))).getSingleOrNull();
         if (invoiceRow != null) {
           final clientId = invoiceRow.clientId;
@@ -301,10 +290,8 @@ class PaymentDao {
           }
         }
 
-        // Update the payment record
         await (_db.update(_db.paymentsTbl)..where((t) => t.id.equals(payment.id))).write(_toCompanion(payment));
         
-        // Sync invoice statuses
         await _syncInvoiceStatus(payment.invoiceId);
         if (oldInvoiceId != null && oldInvoiceId != payment.invoiceId) {
           await _syncInvoiceStatus(oldInvoiceId);

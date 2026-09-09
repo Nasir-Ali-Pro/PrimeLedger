@@ -789,7 +789,6 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         context.go('/invoices/edit/$id');
         break;
       case LedgerEntryType.payment:
-        // Payment entries don't have a direct edit route, navigate to payment history
         context.go('/payments');
         break;
       case LedgerEntryType.expense:

@@ -77,10 +77,8 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
         final startDate = _stripTime(profile.startDate);
         final endDate = profile.endDate != null ? _stripTime(profile.endDate!) : null;
 
-        // Skip if start date is in the future
         if (todayDate.isBefore(startDate)) continue;
 
-        // Auto-deactivate if end date has passed
         if (endDate != null && todayDate.isAfter(endDate)) {
           await ref.read(recurringProfileDaoProvider).update(profile.copyWith(isActive: false));
           updated = true;
@@ -98,7 +96,6 @@ class RecurringProfileNotifier extends Notifier<List<RecurringProfile>> {
                 break;
               }
 
-              // Verify if an invoice for this client, issueDate, and description was already created
               final existingInvoices = await ref.read(invoiceDaoProvider).getAll();
               final alreadyGenerated = existingInvoices.any((i) =>
                 i.clientId == profile.clientId &&

@@ -399,7 +399,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Appearance Section
               Text('Appearance', style: theme.textTheme.titleLarge),
               const SizedBox(height: 16),
               Card(
@@ -439,7 +438,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              // Advanced Features Section
               Text('Advanced Features', style: theme.textTheme.titleLarge),
               const SizedBox(height: 16),
               Card(
@@ -469,7 +467,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              // Business Profile Section
               Text('Business Profile', style: theme.textTheme.titleLarge),
               const SizedBox(height: 8),
               Text('This information appears on your PDF invoices.', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
@@ -667,7 +664,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              // Data Management Section
               Text('Data Management', style: theme.textTheme.titleLarge),
               const SizedBox(height: 16),
               Card(
@@ -724,7 +720,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              // About Section
               Text('About', style: theme.textTheme.titleLarge),
               const SizedBox(height: 16),
               Card(

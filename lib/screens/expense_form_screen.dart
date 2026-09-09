@@ -340,7 +340,7 @@ class _ExpenseFormScreenState extends ConsumerState<ExpenseFormScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 100), // padding for bottom bar
+              const SizedBox(height: 100),
             ],
           ),
         ),

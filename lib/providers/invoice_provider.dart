@@ -41,7 +41,6 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
       await db.transaction(() async {
         await ref.read(invoiceDaoProvider).insert(invoice);
         
-        // Link expenses
         for (final expId in linkedExpenseIds) {
           final exp = ref.read(expensesProvider).where((e) => e.id == expId).firstOrNull;
           if (exp != null) {
@@ -49,7 +48,6 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
           }
         }
 
-        // Link time entries
         for (final timeId in linkedTimeEntryIds) {
           final entry = await ref.read(timeEntryDaoProvider).getById(timeId);
           if (entry != null) {
@@ -57,7 +55,6 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
           }
         }
         
-        // Handle payments
         if (invoice.status == 'Paid') {
           final payment = Payment(
             id: const Uuid().v4(),
@@ -98,13 +95,11 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
 
   Future<void> updateInvoice(Invoice invoice, {List<String> linkedExpenseIds = const [], List<String> linkedTimeEntryIds = const [], double? paymentAmount}) async {
     try {
-      // Unlink all expenses currently linked to this invoice
       final allExpenses = ref.read(expensesProvider);
       final previouslyLinked = allExpenses.where((e) => e.invoiceId == invoice.id).toList();
       for (final exp in previouslyLinked) {
         await ref.read(expenseDaoProvider).update(exp.copyWith(invoiceId: null));
       }
-      // Link the new ones
       for (final expId in linkedExpenseIds) {
         final exp = allExpenses.where((e) => e.id == expId).firstOrNull;
         if (exp != null) {
@@ -112,7 +107,6 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
         }
       }
 
-      // Link time entries
       for (final timeId in linkedTimeEntryIds) {
         final entry = await ref.read(timeEntryDaoProvider).getById(timeId);
         if (entry != null) {
@@ -120,17 +114,14 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
         }
       }
 
-      // Check current payments for this invoice
       final payments = await ref.read(paymentDaoProvider).getAll();
       final thisInvoicePayments = payments.where((p) => p.invoiceId == invoice.id).toList();
       final totalPaidBefore = thisInvoicePayments.fold(0.0, (sum, p) => sum + p.amount);
 
       final db = ref.read(databaseProvider);
       await db.transaction(() async {
-        // Update the invoice in database first so that subsequent payment validations see the new totalAmount
         await ref.read(invoiceDaoProvider).update(invoice);
 
-        // Update status and payments
         if (invoice.status == 'Paid') {
           final diff = invoice.totalAmount - totalPaidBefore;
           if (diff > 0.01) {
@@ -146,7 +137,6 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
             );
             await ref.read(paymentDaoProvider).insert(payment);
           } else if (diff < -0.01) {
-            // Total paid exceeds new invoice total, delete existing and recreate a single full payment
             for (final p in thisInvoicePayments) {
               await ref.read(paymentDaoProvider).delete(p.id);
             }
@@ -175,7 +165,6 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
           );
           await ref.read(paymentDaoProvider).insert(payment);
         } else if (invoice.status == 'Draft' || invoice.status == 'Cancelled') {
-          // Delete all payments if status is not paid/partially paid
           for (final p in thisInvoicePayments) {
             await ref.read(paymentDaoProvider).delete(p.id);
           }
@@ -215,7 +204,6 @@ class InvoicesNotifier extends Notifier<List<Invoice>> {
         }
       }
 
-      // Reset linked expenses so they return to unbilled state
       final linkedExpenses = ref.read(expensesProvider).where((e) => e.invoiceId == id).toList();
       for (final exp in linkedExpenses) {
         await ref.read(expenseDaoProvider).update(exp.copyWith(invoiceId: null));

@@ -63,13 +63,10 @@ class SettingsDao {
       if (key == 'app_pin' && _secureStorage != null) {
         var pin = await _secureStorage.read(key);
         if (pin == null) {
-          // Check for legacy plaintext pin in database for migration
           final row = await (_db.select(_db.appSettingsTbl)..where((t) => t.key.equals(key))).getSingleOrNull();
           if (row != null && row.value.isNotEmpty) {
             pin = row.value;
-            // Migrate to secure storage
             await _secureStorage.write(key, pin);
-            // Delete plaintext legacy pin from SQLite database
             await (_db.delete(_db.appSettingsTbl)..where((t) => t.key.equals(key))).go();
           }
         }

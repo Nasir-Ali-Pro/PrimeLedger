@@ -182,11 +182,9 @@ class PurchaseOrderDao {
       final markup = 1.0 + (settings.productMarkupPercent / 100.0);
 
       await _db.transaction(() async {
-        // 1. Fetch previous state to check if it was received
         final oldOrder = await getById(order.id);
         final wasReceived = oldOrder != null && oldOrder.status == 'Received';
 
-        // 2. Revert stock of old items if previously received
         if (wasReceived) {
           for (final oldItem in oldOrder.items) {
             final oldQtyToRevert = oldItem.receivedQuantity > 0 ? oldItem.receivedQuantity : oldItem.quantity;
@@ -218,11 +216,9 @@ class PurchaseOrderDao {
           }
         }
 
-        // 3. Write updated PO details and delete old items
         await (_db.update(_db.purchaseOrdersTbl)..where((t) => t.id.equals(order.id))).write(_toCompanion(order));
         await (_db.delete(_db.poItemsTbl)..where((t) => t.purchaseOrderId.equals(order.id))).go();
 
-        // 4. Save new items and apply stock adjustments if status is 'Received'
         for (final item in order.items) {
           String? productId = item.productId;
           int receivedQty = 0;
@@ -504,7 +500,6 @@ class PurchaseOrderDao {
             }
           }
         }
-        // Explicitly delete dependent items and payments to avoid FK constraint failures on existing DBs
         await (_db.delete(_db.poItemsTbl)..where((t) => t.purchaseOrderId.equals(id))).go();
         await (_db.delete(_db.supplierPaymentsTbl)..where((t) => t.purchaseOrderId.equals(id))).go();
 

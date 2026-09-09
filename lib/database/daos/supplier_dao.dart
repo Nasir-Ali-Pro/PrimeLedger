@@ -49,7 +49,6 @@ class SupplierDao {
   Future<void> delete(String id) async {
     try {
       await _db.transaction(() async {
-        // Check if there are any purchase orders
         final poCount = await (_db.select(_db.purchaseOrdersTbl)..where((t) => t.supplierId.equals(id))).get();
         if (poCount.isNotEmpty) {
           throw Exception(

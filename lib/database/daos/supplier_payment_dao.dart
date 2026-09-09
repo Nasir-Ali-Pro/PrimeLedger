@@ -56,7 +56,6 @@ class SupplierPaymentDao {
   Future<void> insert(SupplierPayment payment) async {
     try {
       await _db.transaction(() async {
-        // Verify payment won't exceed purchase order balance
         final poRow = await (_db.select(_db.purchaseOrdersTbl)..where((t) => t.id.equals(payment.purchaseOrderId))).getSingleOrNull();
         if (poRow != null) {
           final existingPayments = await (_db.select(_db.supplierPaymentsTbl)..where((t) => t.purchaseOrderId.equals(payment.purchaseOrderId))).get();
@@ -77,7 +76,6 @@ class SupplierPaymentDao {
   Future<void> update(SupplierPayment payment) async {
     try {
       await _db.transaction(() async {
-        // Verify payment won't exceed the target purchase order balance
         final poRow = await (_db.select(_db.purchaseOrdersTbl)..where((t) => t.id.equals(payment.purchaseOrderId))).getSingleOrNull();
         if (poRow != null) {
           final existingPayments = await (_db.select(_db.supplierPaymentsTbl)
@@ -89,7 +87,6 @@ class SupplierPaymentDao {
           }
         }
 
-        // Update the payment record
         await (_db.update(_db.supplierPaymentsTbl)..where((t) => t.id.equals(payment.id))).write(_toCompanion(payment));
       });
     } catch (e) {

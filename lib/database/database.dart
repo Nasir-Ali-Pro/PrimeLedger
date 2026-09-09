@@ -314,7 +314,6 @@ class AppDatabase extends _$AppDatabase {
     return MigrationStrategy(
       onUpgrade: (m, from, to) async {
         if (from < 2) {
-          // Add new columns to existing tables
           await m.addColumn(invoicesTbl, invoicesTbl.discountPercent);
           await m.addColumn(invoicesTbl, invoicesTbl.discountAmount);
           await m.addColumn(invoicesTbl, invoicesTbl.withholdingTaxPercent);
@@ -332,11 +331,8 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(estimateItemsTbl, estimateItemsTbl.discountPercent);
         }
         if (from < 3) {
-          // Client fields are now nullable - SQLite doesn't need migration for this
-          // as text columns in SQLite are inherently nullable
         }
         if (from < 4) {
-          // Add database indexes for common queries
           await customStatement('CREATE INDEX IF NOT EXISTS invoices_client_idx ON invoices_tbl (client_id);');
           await customStatement('CREATE INDEX IF NOT EXISTS invoice_items_invoice_idx ON invoice_items_tbl (invoice_id);');
           await customStatement('CREATE INDEX IF NOT EXISTS payments_invoice_idx ON payments_tbl (invoice_id);');
@@ -351,7 +347,6 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('CREATE INDEX IF NOT EXISTS stock_product_idx ON stock_movements_tbl (product_id);');
         }
         if (from < 5) {
-          // Create SupplierPaymentsTbl and its indexes
           await m.createTable(supplierPaymentsTbl);
           await customStatement('CREATE INDEX IF NOT EXISTS supplier_payments_po_idx ON supplier_payments_tbl (purchase_order_id);');
           await customStatement('CREATE INDEX IF NOT EXISTS supplier_payments_supplier_idx ON supplier_payments_tbl (supplier_id);');
@@ -376,7 +371,6 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> clearAll() async {
     await transaction(() async {
-      // 1. Delete all child/dependent tables first
       await delete(paymentsTbl).go();
       await delete(supplierPaymentsTbl).go();
       await delete(invoiceItemsTbl).go();
@@ -384,7 +378,6 @@ class AppDatabase extends _$AppDatabase {
       await delete(poItemsTbl).go();
       await delete(stockMovementsTbl).go();
       
-      // 2. Delete tables that are parents of items/payments but children of clients/suppliers
       await delete(invoicesTbl).go();
       await delete(estimatesTbl).go();
       await delete(purchaseOrdersTbl).go();
@@ -392,7 +385,6 @@ class AppDatabase extends _$AppDatabase {
       await delete(recurringProfilesTbl).go();
       await delete(expensesTbl).go();
 
-      // 3. Delete top-level parents
       await delete(productsTbl).go();
       await delete(clientsTbl).go();
       await delete(suppliersTbl).go();
@@ -540,12 +532,9 @@ class AppDatabase extends _$AppDatabase {
     final Map<String, dynamic> backup = jsonDecode(backupJson);
 
     await transaction(() async {
-      // 1. Clear database
       await clearAll();
 
-      // 2. Insert records in dependency order (parents first, then children)
       
-      // Top-level parents
       if (backup['appSettings'] != null) {
         for (final item in backup['appSettings']) {
           await into(appSettingsTbl).insert(AppSettingsTblData.fromJson(item as Map<String, dynamic>));
@@ -570,7 +559,6 @@ class AppDatabase extends _$AppDatabase {
         }
       }
 
-      // First-level children
       if (backup['invoices'] != null) {
         for (final item in backup['invoices']) {
           final s = _sanitizeItem('invoices', item as Map<String, dynamic>);
@@ -613,7 +601,6 @@ class AppDatabase extends _$AppDatabase {
         }
       }
 
-      // Second-level children
       if (backup['invoiceItems'] != null) {
         for (final item in backup['invoiceItems']) {
           final s = _sanitizeItem('invoiceItems', item as Map<String, dynamic>);

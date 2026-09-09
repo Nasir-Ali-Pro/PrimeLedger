@@ -295,7 +295,6 @@ List<LedgerEntry> buildLedgerEntries({
     ));
   }
 
-  // Apply client and supplier account filtering
   if (filter.clientId != null) {
     entries = entries.where((e) => e.counterpartyId == filter.clientId).toList();
   } else if (filter.supplierId != null) {
@@ -329,7 +328,6 @@ List<LedgerEntry> buildLedgerEntries({
       }
       currentBalance = generalSingleRunning;
     } else {
-      // General Ledger (All Accounts view) - Track balance per counterparty stream
       final cpId = entry.counterpartyId;
       if (entry.type == LedgerEntryType.purchaseOrder) {
         final key = cpId ?? 'default_supplier';
@@ -370,7 +368,6 @@ List<LedgerEntry> buildLedgerEntries({
           currentBalance = generalSingleRunning;
         }
       } else if (entry.type == LedgerEntryType.estimate) {
-        // Estimates do not alter accounting balances (non-posting entries)
         final key = cpId ?? 'default_client';
         currentBalance = clientBalances[key] ?? 0;
       } else {

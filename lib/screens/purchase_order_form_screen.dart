@@ -99,7 +99,7 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
             lineItems[index]['id'] = const Uuid().v4();
             lineItems[index]['productId'] = product.id;
             lineItems[index]['description'] = product.name;
-            lineItems[index]['price'] = product.costPrice; // Using cost price for PO
+            lineItems[index]['price'] = product.costPrice;
           });
         },
       ),
@@ -188,7 +188,6 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header of the Line Item Card
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
@@ -248,7 +247,6 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Description field
                 TextFormField(
                   key: ValueKey('desc_${item['id']}'),
                   initialValue: item['description'],
@@ -269,11 +267,9 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
                 ),
                 const SizedBox(height: 16),
                 
-                // Qty, Cost, Tax Row
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Qty Field (no icon to save horizontal space)
                     Expanded(
                       flex: 2,
                       child: TextFormField(
@@ -297,7 +293,6 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
                     ),
                     const SizedBox(width: 12),
                     
-                    // Cost Field
                     Expanded(
                       flex: 3,
                       child: TextFormField(
@@ -325,7 +320,6 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
                     ),
                     const SizedBox(width: 12),
                     
-                    // Tax Field
                     Expanded(
                       flex: 2,
                       child: TextFormField(
@@ -530,7 +524,7 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
                 },
               ),
             ],
-            const SizedBox(height: 240), // padding for bottom sheet
+            const SizedBox(height: 240),
           ],
         ),
       ),
